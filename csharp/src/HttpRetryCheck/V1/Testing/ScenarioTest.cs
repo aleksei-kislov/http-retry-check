@@ -2,6 +2,7 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using HttpRetryCheck.V1.Reporting;
 
 namespace HttpRetryCheck.V1.Testing;
 
@@ -59,7 +60,7 @@ public static class ScenarioTest
                     if (row.Assessment == Assessment.NoUnsafeBehaviorObserved)
                     {
                         writeLine(
-                            "HTTP Retry Check PASS " + row.Scenario);
+                            "HTTP Retry Check PASS " + ReportWire.ScenarioName(row.Scenario));
                         continue;
                     }
 
@@ -69,8 +70,9 @@ public static class ScenarioTest
                     foreach (var finding in row.Findings)
                     {
                         writeLine(
-                            "HTTP Retry Check " + status + " " + row.Scenario + ": " +
-                            finding + ": " +
+                            "HTTP Retry Check " + status + " " +
+                            ReportWire.ScenarioName(row.Scenario) + ": " +
+                            ReportWire.FindingName(finding) + ": " +
                             ScenarioExplanations.FindingText(finding));
                     }
                 }

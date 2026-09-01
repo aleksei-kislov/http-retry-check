@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -203,6 +205,9 @@ internal enum RedirectCredentialMode
     Unrelated,
     MultipleWithSuffix,
     DuplicateSource,
+    Cookie,
+    CustomHeader,
+    MalformedTarget,
 }
 
 internal sealed class RedirectExposureHandler : DelegatingHandler
@@ -243,6 +248,12 @@ internal sealed class RedirectExposureHandler : DelegatingHandler
 
         var target = response.Headers.Location;
         response.Dispose();
+        if (mode == RedirectCredentialMode.MalformedTarget)
+        {
+            await SendMalformedTargetAsync(target, credential, cancellationToken).ConfigureAwait(false);
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }
+
         using var redirected = await RequestClone.CreateAsync(
             request,
             target,
@@ -274,11 +285,84 @@ internal sealed class RedirectExposureHandler : DelegatingHandler
                         $"{credential} transformed",
                     });
                 break;
+            case RedirectCredentialMode.Cookie:
+                redirected.Headers.TryAddWithoutValidation(
+                    "Cookie",
+                    "retry-check=" + MarkerFrom(credential));
+                break;
+            case RedirectCredentialMode.CustomHeader:
+                redirected.Headers.TryAddWithoutValidation(
+                    "X-Forwarded-Retry-Check",
+                    "copied-" + MarkerFrom(credential) + "-value");
+                break;
             default:
                 throw new InvalidOperationException("unknown redirect credential mode");
         }
 
         return await base.SendAsync(redirected, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string MarkerFrom(string credential)
+    {
+        const string prefix = "Bearer ";
+        return credential.StartsWith(prefix, StringComparison.Ordinal)
+            ? credential[prefix.Length..]
+            : throw new InvalidOperationException("controlled credential shape is invalid");
+    }
+
+    private static async Task SendMalformedTargetAsync(
+        Uri target,
+        string credential,
+        CancellationToken cancellationToken)
+    {
+        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        await socket.ConnectAsync(
+            IPAddress.Loopback,
+            target.Port,
+            cancellationToken).ConfigureAwait(false);
+        var wire = Encoding.ASCII.GetBytes(
+            $"POST {target.PathAndQuery} HTTP/1.1\r\n" +
+            $"Host: {target.Host}:{target.Port}\r\n" +
+            $"Cookie: retry-check={MarkerFrom(credential)}\r\n" +
+            "Malformed Header: value\r\n" +
+            "Content-Length: 0\r\n\r\n");
+        try
+        {
+            var offset = 0;
+            while (offset < wire.Length)
+            {
+                var sent = await socket.SendAsync(
+                    wire.AsMemory(offset),
+                    SocketFlags.None,
+                    cancellationToken).ConfigureAwait(false);
+                if (sent == 0)
+                {
+                    throw new InvalidOperationException("controlled malformed request was not sent");
+                }
+
+                offset += sent;
+            }
+
+            socket.Shutdown(SocketShutdown.Send);
+            var response = new byte[1];
+            try
+            {
+                while (await socket.ReceiveAsync(
+                        response.AsMemory(),
+                        SocketFlags.None,
+                        cancellationToken).ConfigureAwait(false) != 0)
+                {
+                }
+            }
+            finally
+            {
+                Array.Clear(response);
+            }
+        }
+        finally
+        {
+            Array.Clear(wire);
+        }
     }
 }
 
@@ -310,6 +394,31 @@ internal sealed class RetryStatusHandler : DelegatingHandler
         }
 
         return response;
+    }
+}
+
+internal sealed class ScenarioTokenRecordingHandler : DelegatingHandler
+{
+    private int calls;
+
+    internal ScenarioTokenRecordingHandler()
+        : base(RuntimeTestClients.CreateSocketsHandler())
+    {
+    }
+
+    internal CancellationToken DelayedScenarioToken { get; private set; }
+
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        calls++;
+        if (calls == 6)
+        {
+            DelayedScenarioToken = cancellationToken;
+        }
+
+        return base.SendAsync(request, cancellationToken);
     }
 }
 

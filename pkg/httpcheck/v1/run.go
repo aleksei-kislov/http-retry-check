@@ -7,6 +7,11 @@ import (
 )
 
 // Run executes all six scenarios with the caller-provided Doer.
+//
+// The context bounds the suite's listeners, connections, and scenario work.
+// Run still waits for Do to return, so a Doer that ignores the request context
+// can block Run after cancellation. Run also waits for request-body activity
+// started by the client to stop before it reports cleanup as verified.
 func Run(parent context.Context, doer Doer) (Result, error) {
 	if parent == nil || doer == nil || parent.Err() != nil {
 		return Result{}, ErrInvalidCall

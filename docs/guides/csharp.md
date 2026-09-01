@@ -5,7 +5,7 @@ Retry Check. The API accepts an `HttpMessageInvoker`, including `HttpClient`.
 The C# implementation targets `net10.0`, runs all six HTTP/1 scenarios, and has
 no production package dependencies.
 
-No NuGet package is published in `v0.1.0`; reference the source project from a
+No NuGet package is published in `v0.1.1`; reference the source project from a
 checkout of that tag.
 
 ## Reference the source project
@@ -65,7 +65,10 @@ public sealed class HttpRetryTests
 
 Adapt the handler chain and client construction for your retry implementation.
 Your code remains responsible for disposal, cancellation, and shared client
-state; the suite does not dispose of or reconfigure the client.
+state; the suite does not dispose of or reconfigure the client. The token
+bounds the suite's own work, but `RunAsync` still waits for your handler's
+`SendAsync` call. A handler that ignores cancellation can therefore block the
+run after the token is cancelled.
 
 A passing run logs six lines and returns normally. Unsafe and inconclusive
 runs throw `ScenarioAssertionException` with different messages. Treat both as

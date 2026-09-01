@@ -3,7 +3,7 @@
     <AssemblyName>HttpRetryCheck</AssemblyName>
     <RootNamespace>HttpRetryCheck</RootNamespace>
     <PackageId>HttpRetryCheck</PackageId>
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>0.1.1</VersionPrefix>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>

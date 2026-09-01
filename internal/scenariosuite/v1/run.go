@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	syntheticBodyText        = "{\"http_retry_check\":\"scenario-suite-original\"}\n"
-	changedSyntheticBodyText = "{\"http_retry_check\":\"scenario-suite-modified\"}\n"
-	syntheticCredential      = "Bearer http-retry-check-synthetic-scenario-suite-v1"
-	controlledPath           = "/case"
-	maxObservedAttempts      = 3
+	syntheticBodyText         = "{\"http_retry_check\":\"scenario-suite-original\"}\n"
+	changedSyntheticBodyText  = "{\"http_retry_check\":\"scenario-suite-modified\"}\n"
+	syntheticCredentialMarker = "http-retry-check-synthetic-scenario-suite-v1"
+	syntheticCredential       = "Bearer " + syntheticCredentialMarker
+	controlledPath            = "/case"
+	maxObservedAttempts       = 3
 
 	defaultCaseTimeout       = 5 * time.Second
 	defaultConnectionTimeout = 2 * time.Second
@@ -195,7 +196,7 @@ func executeScenario(
 		observation.Cleanup = CleanupFailed
 	}
 	invocationAccepted := acceptedInvocation(item.scenario, observation, invocation.completion)
-	if !invocationAccepted || !invocation.bodiesQuiesced {
+	if !cleanupSucceeded || !invocationAccepted || !invocation.bodiesQuiesced {
 		observation.CaptureComplete = false
 	}
 	caseEnded := caseContext.Err() != nil

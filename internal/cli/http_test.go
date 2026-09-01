@@ -121,6 +121,37 @@ func TestHTTPEvidenceCommandsPreserveThreeOutcomeMeanings(t *testing.T) {
 	}
 }
 
+func TestHTTPCommandsAcceptIncompleteChangedBodyUnsafeReport(t *testing.T) {
+	input := httpReportBytes(t, httpIncompleteChangedBodyResult())
+	var stdout, stderr bytes.Buffer
+	code := Run(context.Background(), []string{"http", "validate", "-"}, bytes.NewReader(input), &stdout, &stderr)
+	if code != 0 || stdout.String() != "HTTP Retry Check evidence is valid\n" || stderr.Len() != 0 {
+		t.Fatalf("validate = %d/%q/%q", code, stdout.String(), stderr.String())
+	}
+	stdout.Reset()
+	code = Run(context.Background(), []string{"http", "check", "-"}, bytes.NewReader(input), &stdout, &stderr)
+	if code != 1 || stdout.String() != "HTTP Retry Check found unsafe behavior\n" || stderr.Len() != 0 {
+		t.Fatalf("check = %d/%q/%q", code, stdout.String(), stderr.String())
+	}
+	stdout.Reset()
+	code = Run(context.Background(), []string{"http", "explain", "-"}, bytes.NewReader(input), &stdout, &stderr)
+	want := []string{
+		"UNSAFE changed_body_retry\n",
+		"  capture_incomplete: ",
+		"  body_changed: ",
+		"  credential_not_observed: ",
+		"  effect_not_observed: ",
+	}
+	if code != 0 || stderr.Len() != 0 {
+		t.Fatalf("explain = %d/%q/%q", code, stdout.String(), stderr.String())
+	}
+	for _, fragment := range want {
+		if !strings.Contains(stdout.String(), fragment) {
+			t.Fatalf("explain missing %q: %q", fragment, stdout.String())
+		}
+	}
+}
+
 func TestHTTPArtifactRoundTripIsExplicitAndNoOverwrite(t *testing.T) {
 	input := httpReportBytes(t, httpPositiveResult())
 	parent := httpRealTempDir(t)
@@ -258,6 +289,26 @@ func httpInconclusiveResult() httpcheck.Result {
 			Credential: httpcheck.CredentialNotObserved, Cleanup: httpcheck.CleanupSucceeded,
 		},
 		Findings: []httpcheck.FindingCode{httpcheck.FindingAttemptNotObserved, httpcheck.FindingCaptureIncomplete},
+	}
+	return result
+}
+
+func httpIncompleteChangedBodyResult() httpcheck.Result {
+	result := httpPositiveResult()
+	result.Assessment = httpcheck.AssessmentUnsafeBehaviorObserved
+	result.Scenarios[2] = httpcheck.ScenarioResult{
+		Scenario: httpcheck.ScenarioChangedBodyRetry, Assessment: httpcheck.AssessmentUnsafeBehaviorObserved,
+		Observation: httpcheck.Observation{
+			CaptureComplete: false, AttemptCount: 1,
+			MethodConsistent: true, DestinationConsistent: true, BodyConsistent: false,
+			Credential: httpcheck.CredentialNotObserved, Cleanup: httpcheck.CleanupSucceeded,
+		},
+		Findings: []httpcheck.FindingCode{
+			httpcheck.FindingCaptureIncomplete,
+			httpcheck.FindingBodyChanged,
+			httpcheck.FindingCredentialNotObserved,
+			httpcheck.FindingEffectNotObserved,
+		},
 	}
 	return result
 }

@@ -323,16 +323,6 @@ internal static class SemanticEvaluator
             return false;
         }
 
-        if (!observation.BodyConsistent &&
-            ((completeEffectScenario && observation.EffectCount == 0) ||
-                (completeResponseScenario && observation.ResponseAttemptCount == 0) ||
-                (scenario == ScenarioId.DisconnectBeforeAcceptance &&
-                    observation.Credential != CredentialState.SourceOnly &&
-                    observation.Credential != CredentialState.Missing)))
-        {
-            return false;
-        }
-
         if (observation.Credential == CredentialState.NotObserved)
         {
             switch (scenario)

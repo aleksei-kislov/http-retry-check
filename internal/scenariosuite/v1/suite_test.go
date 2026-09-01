@@ -283,6 +283,51 @@ func TestRunDetectsCredentialMarkerInsideRedirectAuthorization(t *testing.T) {
 	}
 }
 
+func TestRunDetectsCredentialMarkerAnywhereInRedirectHead(t *testing.T) {
+	const marker = "http-retry-check-synthetic-scenario-suite-v1"
+	tests := []struct {
+		name string
+		move func(*http.Request)
+	}{
+		{name: "cookie", move: func(request *http.Request) {
+			request.Header.Del("Authorization")
+			request.Header.Set("Cookie", "session="+marker)
+		}},
+		{name: "custom header", move: func(request *http.Request) {
+			request.Header.Del("Authorization")
+			request.Header.Set("X-Copied-Value", "prefix-"+marker+"-suffix")
+		}},
+		{name: "raw target", move: func(request *http.Request) {
+			request.Header.Del("Authorization")
+			request.URL.RawQuery = "copied=" + marker
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client, transport := newClient(false)
+			defer transport.CloseIdleConnections()
+			client.CheckRedirect = func(request *http.Request, via []*http.Request) error {
+				if len(via) != 0 && request.URL.Host != via[0].URL.Host {
+					test.move(request)
+				}
+				return nil
+			}
+
+			result, err := suite.Run(context.Background(), client)
+			if err != nil || suite.Validate(result) != nil {
+				t.Fatalf("redirect result = %#v/%v", result, err)
+			}
+			row := result.Scenarios[3]
+			if result.Assessment != suite.AssessmentUnsafeBehaviorObserved ||
+				row.Assessment != suite.AssessmentUnsafeBehaviorObserved ||
+				row.Observation.Credential != suite.CredentialExposedAtTarget ||
+				!containsFinding(row.Findings, suite.FindingCredentialExposedAtTarget) {
+				t.Fatalf("redirect exposure row = %#v", row)
+			}
+		})
+	}
+}
+
 func TestValidateRejectsForgedAssessmentFindingsAndTuples(t *testing.T) {
 	client, transport := newClient(true)
 	defer transport.CloseIdleConnections()

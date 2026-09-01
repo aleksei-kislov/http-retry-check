@@ -77,6 +77,66 @@ public sealed class SemanticModelTests
     }
 
     [TestMethod]
+    public void IncompleteChangedBodyEvidenceRemainsUnsafeWithoutACompletedEffectOrResponse()
+    {
+        var observation = new Observation(
+            captureComplete: false,
+            attemptCount: 1,
+            effectCount: 0,
+            overlapCount: 0,
+            retryAfterEffectCount: 0,
+            retryAfterUnconfirmedCount: 0,
+            retryBeforeResponseCount: 0,
+            responseAttemptCount: 0,
+            responseCompleteCount: 0,
+            firstResponseComplete: false,
+            delayCompleteCount: 0,
+            methodConsistent: true,
+            destinationConsistent: true,
+            bodyConsistent: false,
+            credential: CredentialState.NotObserved,
+            cleanup: CleanupState.Succeeded);
+        var cases = new (ScenarioId Scenario, FindingCode[] Findings)[]
+        {
+            (
+                ScenarioId.ChangedBodyRetry,
+                [
+                    FindingCode.CaptureIncomplete,
+                    FindingCode.BodyChanged,
+                    FindingCode.CredentialNotObserved,
+                    FindingCode.EffectNotObserved,
+                ]),
+            (
+                ScenarioId.RetryLimit,
+                [
+                    FindingCode.CaptureIncomplete,
+                    FindingCode.ResponseIncomplete,
+                    FindingCode.BodyChanged,
+                    FindingCode.CredentialNotObserved,
+                ]),
+            (
+                ScenarioId.DisconnectBeforeAcceptance,
+                [
+                    FindingCode.CaptureIncomplete,
+                    FindingCode.BodyChanged,
+                    FindingCode.CredentialNotObserved,
+                ]),
+        };
+
+        foreach (var item in cases)
+        {
+            var row = new ScenarioResult(
+                item.Scenario,
+                Assessment.UnsafeBehaviorObserved,
+                observation,
+                item.Findings);
+
+            Assert.AreEqual(Assessment.UnsafeBehaviorObserved, row.Assessment, item.Scenario.ToString());
+            CollectionAssert.Contains(Copy(row.Findings), FindingCode.BodyChanged);
+        }
+    }
+
+    [TestMethod]
     public void SuiteValidationRecomputesUnsafeOverInconclusiveAggregate()
     {
         var rows = PositiveRows();

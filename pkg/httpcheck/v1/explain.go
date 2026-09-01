@@ -64,6 +64,8 @@ func FindingText(finding FindingCode) string {
 	case FindingCredentialMissing:
 		return "The original request did not contain exactly one expected synthetic Authorization value."
 	case FindingCredentialExposedAtTarget:
+		// report.v1 keeps the released text even though capture now detects the
+		// opaque marker anywhere in the bounded redirect-target request head.
 		return "The synthetic Authorization value reached the redirect target."
 	case FindingEffectNotObserved:
 		return "The test did not observe the expected server-side effect."

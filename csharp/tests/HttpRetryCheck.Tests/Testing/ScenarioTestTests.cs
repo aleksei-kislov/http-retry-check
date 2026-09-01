@@ -19,11 +19,17 @@ public sealed class ScenarioTestTests
 
         await ScenarioTest.CheckAsync(client, lines.Add);
 
-        Assert.AreEqual(6, lines.Count);
-        Assert.IsTrue(lines.TrueForAll(
-            line => line.StartsWith(
-                "HTTP Retry Check PASS ",
-                StringComparison.Ordinal)));
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "HTTP Retry Check PASS accept_then_disconnect",
+                "HTTP Retry Check PASS disconnect_before_acceptance",
+                "HTTP Retry Check PASS changed_body_retry",
+                "HTTP Retry Check PASS cross_origin_redirect_credentials",
+                "HTTP Retry Check PASS retry_limit",
+                "HTTP Retry Check PASS delayed_response",
+            },
+            lines);
     }
 
     [TestMethod]
@@ -38,6 +44,21 @@ public sealed class ScenarioTestTests
             exception.Message);
         Assert.IsNull(exception.StackTrace);
         Assert.AreEqual(exception.Message, exception.ToString());
+    }
+
+    [TestMethod]
+    public async Task UnsafeDiagnosticsUseCanonicalWireNames()
+    {
+        using var client = RuntimeTestClients.CreateOrdinaryClient(new RedirectExposureHandler());
+        var lines = new List<string>();
+
+        _ = await CaptureAssertionAsync(() => ScenarioTest.CheckAsync(client, lines.Add));
+
+        CollectionAssert.Contains(
+            lines,
+            "HTTP Retry Check UNSAFE cross_origin_redirect_credentials: " +
+            "credential_exposed_at_target: " +
+            "The synthetic Authorization value reached the redirect target.");
     }
 
     [TestMethod]

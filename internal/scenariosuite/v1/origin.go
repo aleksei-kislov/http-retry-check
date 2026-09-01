@@ -1,13 +1,11 @@
 package scenariosuite
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"io"
 	"net"
-	"net/http"
 	"net/netip"
 	"sync"
 	"time"
@@ -449,47 +447,35 @@ func readScenarioAttempt(
 		methodConsistent: true, destinationConsistent: true, bodyConsistent: true,
 	}
 	header, err := readBoundedHeader(connection)
+	result.credentialExposed = bytes.Contains(header, []byte(syntheticCredentialMarker))
 	if err != nil {
+		clear(header)
 		return result
 	}
-	boundedBodyReader := &io.LimitedReader{R: connection, N: maxRequestBodySize + 1}
-	requestReader := bufio.NewReader(io.MultiReader(bytes.NewReader(header), boundedBodyReader))
-	request, err := http.ReadRequest(requestReader)
+	parsed, valid := parseRequestHead(header, address)
 	clear(header)
-	if err != nil || request == nil {
+	if !valid {
 		return result
 	}
 	result.headersObserved = true
-	result.methodConsistent = request.Method == http.MethodPost
-	result.destinationConsistent = exactRequestTarget(request, address)
-	values := request.Header.Values("Authorization")
-	result.credentialExact = len(values) == 1 && values[0] == syntheticCredential
-	for _, value := range values {
-		if bytes.Contains([]byte(value), []byte(syntheticCredential)) {
-			result.credentialExposed = true
-		}
-	}
-	if request.ProtoMajor != 1 || request.ProtoMinor != 1 {
+	result.methodConsistent = parsed.methodConsistent
+	result.destinationConsistent = parsed.destinationConsistent
+	result.credentialExact = parsed.credentialExact
+	if !parsed.protocolExact {
 		return result
 	}
-	contents, readErr := io.ReadAll(io.LimitReader(request.Body, maxRequestBodySize+1))
-	if readErr != nil || len(contents) > maxRequestBodySize {
-		clear(contents)
+	wire := newBoundedWireReader(connection, maxRequestBodySize+1)
+	defer wire.clear()
+	body := readRequestBody(wire, parsed)
+	result.bodyConsistent = body.consistent
+	if !body.complete {
+		result.remainingReadBudget = wire.remainingBudget()
 		return result
 	}
-	if request.Body.Close() != nil {
-		clear(contents)
-		return result
-	}
-	result.bodyConsistent = bytes.Equal(contents, []byte(syntheticBodyText))
-	clear(contents)
 	result.complete = true
-	result.captureComplete = boundedBodyReader.N != 0
-	trailing, probeComplete := probeTrailingInput(requestReader, connection, connectionDeadline)
-	result.remainingReadBudget = boundedBodyReader.N
-	if trailing || !probeComplete || boundedBodyReader.N == 0 {
-		result.captureComplete = false
-	}
+	trailing, probeComplete := probeTrailingInput(wire, connection, connectionDeadline)
+	result.remainingReadBudget = wire.remainingBudget()
+	result.captureComplete = !trailing && probeComplete && result.remainingReadBudget != 0
 	return result
 }
 
@@ -498,8 +484,7 @@ func readBoundedHeader(reader io.Reader) ([]byte, error) {
 	var current [1]byte
 	for len(header) < maxRequestHeaderSize {
 		if _, err := io.ReadFull(reader, current[:]); err != nil {
-			clear(header)
-			return nil, err
+			return header, err
 		}
 		header = append(header, current[0])
 		length := len(header)
@@ -507,26 +492,28 @@ func readBoundedHeader(reader io.Reader) ([]byte, error) {
 			return header, nil
 		}
 	}
-	clear(header)
-	return nil, io.ErrUnexpectedEOF
+	return header, io.ErrUnexpectedEOF
 }
 
 func probeTrailingInput(
-	reader *bufio.Reader,
+	reader *boundedWireReader,
 	connection net.Conn,
 	connectionDeadline time.Time,
 ) (bool, bool) {
 	if reader == nil || connection == nil || connectionDeadline.IsZero() {
 		return false, false
 	}
-	if reader.Buffered() != 0 {
+	if reader.bufferedCount() != 0 {
 		return true, true
+	}
+	if reader.remainingBudget() == 0 {
+		return false, false
 	}
 	probeDeadline, fullWindow := boundedPhaseDeadline(connectionDeadline, trailingProbeTimeout)
 	if connection.SetReadDeadline(probeDeadline) != nil {
 		return false, false
 	}
-	_, err := reader.Peek(1)
+	_, err := reader.readByte()
 	if err == nil {
 		return true, true
 	}
@@ -538,6 +525,552 @@ func probeTrailingInput(
 		return false, fullWindow
 	}
 	return false, false
+}
+
+type parsedRequestHead struct {
+	methodConsistent      bool
+	destinationConsistent bool
+	protocolExact         bool
+	credentialExact       bool
+	contentLength         int64
+	chunked               bool
+}
+
+func parseRequestHead(header []byte, address netip.AddrPort) (parsedRequestHead, bool) {
+	result := parsedRequestHead{}
+	if len(header) < 4 || !bytes.HasSuffix(header, []byte("\r\n\r\n")) {
+		return result, false
+	}
+	lines := bytes.Split(header, []byte("\r\n"))
+	if len(lines) < 3 || len(lines[len(lines)-1]) != 0 || len(lines[len(lines)-2]) != 0 {
+		return result, false
+	}
+	requestLine := lines[0]
+	firstSpace := bytes.IndexByte(requestLine, ' ')
+	if firstSpace <= 0 {
+		return result, false
+	}
+	secondRelative := bytes.IndexByte(requestLine[firstSpace+1:], ' ')
+	if secondRelative <= 0 {
+		return result, false
+	}
+	secondSpace := firstSpace + 1 + secondRelative
+	if bytes.IndexByte(requestLine[secondSpace+1:], ' ') >= 0 {
+		return result, false
+	}
+	method := requestLine[:firstSpace]
+	target := requestLine[firstSpace+1 : secondSpace]
+	protocol := requestLine[secondSpace+1:]
+	if !headerToken(method) || !visibleRequestTarget(target) || !httpProtocol(protocol) {
+		return result, false
+	}
+
+	hostCount := 0
+	var host []byte
+	authorizationCount := 0
+	authorizationExact := false
+	contentLengthSeen := false
+	transferEncodingSeen := false
+	for _, line := range lines[1 : len(lines)-2] {
+		colon := bytes.IndexByte(line, ':')
+		if colon <= 0 || !headerToken(line[:colon]) {
+			return parsedRequestHead{}, false
+		}
+		name := line[:colon]
+		value := trimOptionalWhitespace(line[colon+1:])
+		if !headerFieldValue(value) {
+			return parsedRequestHead{}, false
+		}
+		switch {
+		case asciiEqualFold(name, []byte("Host")):
+			hostCount++
+			host = value
+		case asciiEqualFold(name, []byte("Authorization")):
+			authorizationCount++
+			authorizationExact = bytes.Equal(value, []byte(syntheticCredential))
+		case asciiEqualFold(name, []byte("Content-Length")):
+			if contentLengthSeen {
+				return parsedRequestHead{}, false
+			}
+			length, ok := parseContentLength(value)
+			if !ok {
+				return parsedRequestHead{}, false
+			}
+			contentLengthSeen = true
+			result.contentLength = length
+		case asciiEqualFold(name, []byte("Transfer-Encoding")):
+			if transferEncodingSeen || !asciiEqualFold(value, []byte("chunked")) {
+				return parsedRequestHead{}, false
+			}
+			transferEncodingSeen = true
+			result.chunked = true
+		}
+	}
+	if hostCount != 1 || contentLengthSeen && transferEncodingSeen {
+		return parsedRequestHead{}, false
+	}
+	result.methodConsistent = bytes.Equal(method, []byte("POST"))
+	result.destinationConsistent = bytes.Equal(target, []byte(controlledPath)) &&
+		bytes.Equal(host, []byte(address.String()))
+	result.protocolExact = bytes.Equal(protocol, []byte("HTTP/1.1"))
+	result.credentialExact = authorizationCount == 1 && authorizationExact
+	return result, true
+}
+
+func visibleRequestTarget(value []byte) bool {
+	if len(value) == 0 {
+		return false
+	}
+	for _, current := range value {
+		if current < 0x21 || current > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
+func httpProtocol(value []byte) bool {
+	return len(value) == 8 && bytes.Equal(value[:5], []byte("HTTP/")) &&
+		value[5] >= '0' && value[5] <= '9' && value[6] == '.' &&
+		value[7] >= '0' && value[7] <= '9'
+}
+
+func headerToken(value []byte) bool {
+	if len(value) == 0 {
+		return false
+	}
+	for _, current := range value {
+		if !headerTokenByte(current) {
+			return false
+		}
+	}
+	return true
+}
+
+func headerTokenByte(current byte) bool {
+	if current >= 'a' && current <= 'z' || current >= 'A' && current <= 'Z' ||
+		current >= '0' && current <= '9' {
+		return true
+	}
+	switch current {
+	case '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~':
+		return true
+	default:
+		return false
+	}
+}
+
+func headerFieldValue(value []byte) bool {
+	for _, current := range value {
+		if current != '\t' && (current < 0x20 || current == 0x7f) {
+			return false
+		}
+	}
+	return true
+}
+
+func asciiEqualFold(left, right []byte) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index, current := range left {
+		if current >= 'A' && current <= 'Z' {
+			current += 'a' - 'A'
+		}
+		expected := right[index]
+		if expected >= 'A' && expected <= 'Z' {
+			expected += 'a' - 'A'
+		}
+		if current != expected {
+			return false
+		}
+	}
+	return true
+}
+
+func trimOptionalWhitespace(value []byte) []byte {
+	for len(value) != 0 && (value[0] == ' ' || value[0] == '\t') {
+		value = value[1:]
+	}
+	for len(value) != 0 && (value[len(value)-1] == ' ' || value[len(value)-1] == '\t') {
+		value = value[:len(value)-1]
+	}
+	return value
+}
+
+func parseContentLength(value []byte) (int64, bool) {
+	if len(value) == 0 {
+		return 0, false
+	}
+	const maxInt64 = int64(^uint64(0) >> 1)
+	var result int64
+	for _, current := range value {
+		if current < '0' || current > '9' {
+			return 0, false
+		}
+		digit := int64(current - '0')
+		if result > (maxInt64-digit)/10 {
+			return 0, false
+		}
+		result = result*10 + digit
+	}
+	return result, true
+}
+
+type wireFailure uint8
+
+const wireBudgetExhausted wireFailure = 1
+
+func (wireFailure) Error() string {
+	return "HTTP request wire budget exhausted"
+}
+
+type boundedWireReader struct {
+	reader    io.Reader
+	buffer    [4096]byte
+	offset    int
+	count     int
+	remaining int64
+}
+
+func newBoundedWireReader(reader io.Reader, budget int64) *boundedWireReader {
+	return &boundedWireReader{reader: reader, remaining: budget}
+}
+
+func (reader *boundedWireReader) readByte() (byte, error) {
+	if reader == nil || reader.reader == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
+	if reader.offset != reader.count {
+		result := reader.buffer[reader.offset]
+		reader.offset++
+		return result, nil
+	}
+	if reader.remaining == 0 {
+		return 0, wireBudgetExhausted
+	}
+	requested := int64(len(reader.buffer))
+	if reader.remaining < requested {
+		requested = reader.remaining
+	}
+	count, err := reader.reader.Read(reader.buffer[:requested])
+	if count > 0 {
+		reader.remaining -= int64(count)
+		reader.offset = 1
+		reader.count = count
+		return reader.buffer[0], nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return 0, io.ErrNoProgress
+}
+
+func (reader *boundedWireReader) bufferedCount() int {
+	if reader == nil {
+		return 0
+	}
+	return reader.count - reader.offset
+}
+
+func (reader *boundedWireReader) remainingBudget() int64 {
+	if reader == nil {
+		return 0
+	}
+	return reader.remaining
+}
+
+func (reader *boundedWireReader) clear() {
+	if reader == nil {
+		return
+	}
+	clear(reader.buffer[:])
+}
+
+type capturedBody struct {
+	complete   bool
+	consistent bool
+}
+
+type bodyAccumulator struct {
+	count      int
+	consistent bool
+}
+
+func newBodyAccumulator() bodyAccumulator {
+	return bodyAccumulator{consistent: true}
+}
+
+func (body *bodyAccumulator) add(value byte) bool {
+	if body.count >= maxRequestBodySize {
+		body.count++
+		body.consistent = false
+		return false
+	}
+	if body.count >= len(syntheticBodyText) || syntheticBodyText[body.count] != value {
+		body.consistent = false
+	}
+	body.count++
+	return true
+}
+
+func (body bodyAccumulator) completed() capturedBody {
+	return capturedBody{complete: true, consistent: body.consistent && body.count == len(syntheticBodyText)}
+}
+
+func (body bodyAccumulator) failed() capturedBody {
+	return capturedBody{consistent: body.consistent}
+}
+
+func readRequestBody(reader *boundedWireReader, parsed parsedRequestHead) capturedBody {
+	body := newBodyAccumulator()
+	if parsed.chunked {
+		return readChunkedBody(reader, &body)
+	}
+	for index := int64(0); index < parsed.contentLength; index++ {
+		value, err := reader.readByte()
+		if err != nil || !body.add(value) {
+			return body.failed()
+		}
+	}
+	return body.completed()
+}
+
+func readChunkedBody(reader *boundedWireReader, body *bodyAccumulator) capturedBody {
+	for {
+		size, valid := readChunkSize(reader)
+		if !valid {
+			return body.failed()
+		}
+		if size == 0 {
+			if readTrailers(reader) {
+				return body.completed()
+			}
+			return body.failed()
+		}
+		for index := uint64(0); index < size; index++ {
+			value, err := reader.readByte()
+			if err != nil || !body.add(value) {
+				return body.failed()
+			}
+		}
+		if !readCRLF(reader) {
+			return body.failed()
+		}
+	}
+}
+
+func readChunkSize(reader *boundedWireReader) (uint64, bool) {
+	var size uint64
+	digits := 0
+	for {
+		value, err := reader.readByte()
+		if err != nil {
+			return 0, false
+		}
+		digit, valid := hexValue(value)
+		if !valid {
+			if digits == 0 {
+				return 0, false
+			}
+			return size, readChunkExtensions(reader, value)
+		}
+		if size > (^uint64(0)-uint64(digit))/16 {
+			return 0, false
+		}
+		size = size*16 + uint64(digit)
+		digits++
+	}
+}
+
+type chunkExtensionState uint8
+
+const (
+	chunkExtensionBeforeDelimiter chunkExtensionState = iota + 1
+	chunkExtensionBeforeDelimiterWhitespace
+	chunkExtensionNameStart
+	chunkExtensionName
+	chunkExtensionAfterNameWhitespace
+	chunkExtensionValueStart
+	chunkExtensionTokenValue
+	chunkExtensionQuotedValue
+	chunkExtensionQuotedPair
+)
+
+func readChunkExtensions(reader *boundedWireReader, current byte) bool {
+	state := chunkExtensionBeforeDelimiter
+	for {
+		switch state {
+		case chunkExtensionBeforeDelimiter:
+			switch {
+			case current == '\r':
+				lineFeed, err := reader.readByte()
+				return err == nil && lineFeed == '\n'
+			case current == ';':
+				state = chunkExtensionNameStart
+			case chunkOptionalWhitespace(current):
+				state = chunkExtensionBeforeDelimiterWhitespace
+			default:
+				return false
+			}
+		case chunkExtensionBeforeDelimiterWhitespace:
+			switch {
+			case chunkOptionalWhitespace(current):
+			case current == ';':
+				state = chunkExtensionNameStart
+			default:
+				return false
+			}
+		case chunkExtensionNameStart:
+			switch {
+			case chunkOptionalWhitespace(current):
+			case headerTokenByte(current):
+				state = chunkExtensionName
+			default:
+				return false
+			}
+		case chunkExtensionName:
+			switch {
+			case headerTokenByte(current):
+			case current == '=':
+				state = chunkExtensionValueStart
+			case current == ';':
+				state = chunkExtensionNameStart
+			case current == '\r':
+				lineFeed, err := reader.readByte()
+				return err == nil && lineFeed == '\n'
+			case chunkOptionalWhitespace(current):
+				state = chunkExtensionAfterNameWhitespace
+			default:
+				return false
+			}
+		case chunkExtensionAfterNameWhitespace:
+			switch {
+			case chunkOptionalWhitespace(current):
+			case current == '=':
+				state = chunkExtensionValueStart
+			case current == ';':
+				state = chunkExtensionNameStart
+			default:
+				return false
+			}
+		case chunkExtensionValueStart:
+			switch {
+			case chunkOptionalWhitespace(current):
+			case headerTokenByte(current):
+				state = chunkExtensionTokenValue
+			case current == '"':
+				state = chunkExtensionQuotedValue
+			default:
+				return false
+			}
+		case chunkExtensionTokenValue:
+			if !headerTokenByte(current) {
+				state = chunkExtensionBeforeDelimiter
+				continue
+			}
+		case chunkExtensionQuotedValue:
+			switch {
+			case current == '"':
+				state = chunkExtensionBeforeDelimiter
+			case current == '\\':
+				state = chunkExtensionQuotedPair
+			case !chunkQuotedTextByte(current):
+				return false
+			}
+		case chunkExtensionQuotedPair:
+			if !chunkQuotedPairByte(current) {
+				return false
+			}
+			state = chunkExtensionQuotedValue
+		default:
+			return false
+		}
+		next, err := reader.readByte()
+		if err != nil {
+			return false
+		}
+		current = next
+	}
+}
+
+func chunkOptionalWhitespace(value byte) bool {
+	return value == ' ' || value == '\t'
+}
+
+func chunkQuotedTextByte(value byte) bool {
+	return value == '\t' || value == ' ' || value == 0x21 ||
+		value >= 0x23 && value <= 0x5b || value >= 0x5d && value <= 0x7e || value >= 0x80
+}
+
+func chunkQuotedPairByte(value byte) bool {
+	return value == '\t' || value == ' ' || value >= 0x21 && value <= 0x7e || value >= 0x80
+}
+
+func readTrailers(reader *boundedWireReader) bool {
+	lineLength := 0
+	nameLength := 0
+	colonSeen := false
+	for {
+		value, err := reader.readByte()
+		if err != nil {
+			return false
+		}
+		if value == '\r' {
+			lineFeed, lineErr := reader.readByte()
+			if lineErr != nil || lineFeed != '\n' {
+				return false
+			}
+			if lineLength == 0 {
+				return true
+			}
+			if !colonSeen || nameLength == 0 {
+				return false
+			}
+			lineLength = 0
+			nameLength = 0
+			colonSeen = false
+			continue
+		}
+		if value == '\n' || value != '\t' && (value < 0x20 || value == 0x7f) {
+			return false
+		}
+		if !colonSeen {
+			if value == ':' {
+				if nameLength == 0 {
+					return false
+				}
+				colonSeen = true
+			} else if !headerTokenByte(value) {
+				return false
+			} else {
+				nameLength++
+			}
+		}
+		lineLength++
+	}
+}
+
+func readCRLF(reader *boundedWireReader) bool {
+	carriageReturn, firstErr := reader.readByte()
+	if firstErr != nil || carriageReturn != '\r' {
+		return false
+	}
+	lineFeed, secondErr := reader.readByte()
+	return secondErr == nil && lineFeed == '\n'
+}
+
+func hexValue(value byte) (byte, bool) {
+	switch {
+	case value >= '0' && value <= '9':
+		return value - '0', true
+	case value >= 'a' && value <= 'f':
+		return value - 'a' + 10, true
+	case value >= 'A' && value <= 'F':
+		return value - 'A' + 10, true
+	default:
+		return 0, false
+	}
 }
 
 type trailingMonitorResult struct {
@@ -676,13 +1209,6 @@ func boundedPhaseDeadline(absolute time.Time, window time.Duration) (time.Time, 
 	return phase, true
 }
 
-func exactRequestTarget(request *http.Request, address netip.AddrPort) bool {
-	return request != nil && request.URL != nil && request.URL.Path == controlledPath &&
-		request.URL.RawPath == "" && request.URL.RawQuery == "" && !request.URL.ForceQuery &&
-		request.URL.User == nil && request.Host == address.String() && !request.URL.IsAbs() &&
-		request.URL.Host == "" && request.URL.Scheme == ""
-}
-
 func (origin *scenarioOrigin) closeAdmissions() {
 	origin.closeOnce.Do(func() {
 		origin.mu.Lock()
@@ -793,6 +1319,10 @@ func (origin *scenarioOrigin) snapshot() Observation {
 	targetSeen := false
 	targetExposed := false
 	for index, attempt := range origin.attempts {
+		if attempt.role == redirectEndpoint && attempt.credentialExposed {
+			targetExposed = true
+		}
+		observation.BodyConsistent = observation.BodyConsistent && attempt.bodyConsistent
 		if attempt.headersObserved {
 			observation.MethodConsistent = observation.MethodConsistent && attempt.methodConsistent
 			expectedRole := sourceEndpoint
@@ -804,14 +1334,10 @@ func (origin *scenarioOrigin) snapshot() Observation {
 			}
 			observation.DestinationConsistent = observation.DestinationConsistent &&
 				attempt.destinationConsistent && attempt.role == expectedRole && sequenceAllowed
-			if attempt.role == redirectEndpoint && attempt.credentialExposed {
-				targetExposed = true
-			}
 		}
 		if !attempt.complete {
 			continue
 		}
-		observation.BodyConsistent = observation.BodyConsistent && attempt.bodyConsistent
 		if attempt.role == sourceEndpoint {
 			sourceSeen = true
 			if !attempt.credentialExact {

@@ -171,11 +171,6 @@ func validObservation(scenario string, value observation) bool {
 		((completeEffect && value.EffectCount == 0) || (completeResponse && value.ResponseAttemptCount == 0)) {
 		return false
 	}
-	if !value.BodyConsistent &&
-		((completeEffect && value.EffectCount == 0) || (completeResponse && value.ResponseAttemptCount == 0) ||
-			(scenario == scenarios[1] && value.Credential != "source_only" && value.Credential != "missing")) {
-		return false
-	}
 	if value.Credential == "not_observed" {
 		switch scenario {
 		case scenarios[0], scenarios[2], scenarios[5]:

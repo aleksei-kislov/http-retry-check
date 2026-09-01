@@ -7,11 +7,10 @@ four-file artifact.
 
 ## Add the module
 
-From the Go module where you want to test your client, add the first public
-release:
+From the Go module where you want to test your client, add the current release:
 
 ```bash
-go get github.com/aleksei-kislov/http-retry-check@v0.1.0
+go get github.com/aleksei-kislov/http-retry-check@v0.1.1
 ```
 
 Use Go 1.26 or later in your module:
@@ -108,6 +107,9 @@ if err := httpcheck.Validate(result); err != nil {
 In a Go test, `t.Context()` supplies the active context. `Run` requires a
 non-nil active context and client. `Validate` performs no I/O. It recalculates
 the findings, each row, and the overall result from the recorded observations.
+The context bounds the suite's own work, but `Run` still waits for your
+`Doer.Do` call to return. A custom `Doer` or `RoundTripper` that ignores the
+request context can therefore block the run after cancellation.
 
 ## Produce deterministic evidence
 
@@ -156,9 +158,9 @@ store them. The CLI can inspect a saved report without running the client
 again:
 
 ```bash
-go run github.com/aleksei-kislov/http-retry-check/cmd/http-retry-check@v0.1.0 \
+go run github.com/aleksei-kislov/http-retry-check/cmd/http-retry-check@v0.1.1 \
   http check <report-or-artifact-path>
-go run github.com/aleksei-kislov/http-retry-check/cmd/http-retry-check@v0.1.0 \
+go run github.com/aleksei-kislov/http-retry-check/cmd/http-retry-check@v0.1.1 \
   http explain <report-path>
 ```
 
@@ -166,8 +168,9 @@ go run github.com/aleksei-kislov/http-retry-check/cmd/http-retry-check@v0.1.0 \
 
 If a run stops early, fix the first incomplete scenario before looking at later
 unavailable rows. A custom `Doer` or `RoundTripper` must close original and
-replay bodies on every return path and honor cancellation; an unclosed body can
-add a five-second wait. See
+replay bodies on every return path and honor cancellation. A body that is not
+closed promptly can delay cleanup; a client call that never returns can block
+the run. See
 [run sequencing and early stopping](../reference/semantics.md#run-sequencing-and-early-stopping)
 for the lifecycle rules and the
 [finding-code reference](../reference/semantics.md#finding-code-reference) for

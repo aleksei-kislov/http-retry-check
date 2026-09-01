@@ -11,8 +11,16 @@ internal static class RuntimeConstants
     internal const int MaximumBodyBytes = 1 << 20;
     internal const int MaximumWireBytes = MaximumBodyBytes + 1;
     internal const string ControlledPath = "/case";
+    internal const string SyntheticMarker =
+        "http-retry-check-synthetic-scenario-suite-v1";
     internal const string SyntheticCredential =
-        "Bearer http-retry-check-synthetic-scenario-suite-v1";
+        "Bearer " + SyntheticMarker;
+
+    internal static ReadOnlySpan<byte> SyntheticMarkerBytes =>
+        "http-retry-check-synthetic-scenario-suite-v1"u8;
+
+    internal static ReadOnlySpan<byte> SyntheticCredentialBytes =>
+        "Bearer http-retry-check-synthetic-scenario-suite-v1"u8;
 
     internal static ReadOnlySpan<byte> OrdinaryBody =>
         "{\"http_retry_check\":\"scenario-suite-original\"}\n"u8;

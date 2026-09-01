@@ -15,6 +15,7 @@ internal sealed class ScenarioOrigin
     private readonly IReadOnlyList<AdmittedEndpoint> endpoints;
     private readonly CancellationToken scenarioToken;
     private readonly Action stopScenario;
+    private readonly Func<TimeSpan, CancellationToken, Task> waitForDelayedResponse;
     private readonly Dictionary<Socket, bool> connections = new();
     private readonly List<CapturedAttempt> attempts = new(RuntimeConstants.MaximumAttempts);
     private readonly List<Task> acceptTasks = new(2);
@@ -39,12 +40,14 @@ internal sealed class ScenarioOrigin
     internal ScenarioOrigin(
         AdmittedScenario admitted,
         CancellationToken scenarioToken,
-        Action stopScenario)
+        Action stopScenario,
+        Func<TimeSpan, CancellationToken, Task>? waitForDelayedResponse = null)
     {
         scenario = admitted.Scenario;
         endpoints = admitted.Endpoints;
         this.scenarioToken = scenarioToken;
         this.stopScenario = stopScenario;
+        this.waitForDelayedResponse = waitForDelayedResponse ?? Task.Delay;
     }
 
     internal string SourceTarget => Target(endpoints[0]);
@@ -146,6 +149,11 @@ internal sealed class ScenarioOrigin
             for (var index = 0; index < attempts.Count; index++)
             {
                 var attempt = attempts[index];
+                if (attempt.Role == EndpointRole.RedirectTarget && attempt.CredentialExposed)
+                {
+                    targetExposed = true;
+                }
+
                 if (attempt.HeadersObserved)
                 {
                     methodConsistent = methodConsistent && attempt.MethodConsistent;
@@ -164,18 +172,14 @@ internal sealed class ScenarioOrigin
                         attempt.DestinationConsistent &&
                         attempt.Role == expectedRole &&
                         sequenceAllowed;
-                    if (attempt.Role == EndpointRole.RedirectTarget && attempt.CredentialExposed)
-                    {
-                        targetExposed = true;
-                    }
                 }
 
+                bodyConsistent = bodyConsistent && attempt.BodyConsistent;
                 if (!attempt.Complete)
                 {
                     continue;
                 }
 
-                bodyConsistent = bodyConsistent && attempt.BodyConsistent;
                 if (attempt.Role == EndpointRole.Source)
                 {
                     sourceSeen = true;
@@ -452,20 +456,16 @@ internal sealed class ScenarioOrigin
                     var monitor = new TrailingMonitor(observed.Reader, connectionCancellation.Token);
                     try
                     {
-                        await Task.Delay(
+                        await waitForDelayedResponse(
                             RuntimeConstants.DelayedResponseDuration,
-                            connectionCancellation.Token).ConfigureAwait(false);
+                            scenarioToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
-                        var canceledMonitor = await monitor.FinishAsync(
+                        _ = await monitor.FinishAsync(
                             TimeSpan.Zero,
                             connectionCancellation.Token).ConfigureAwait(false);
-                        if (!canceledMonitor.Complete)
-                        {
-                            MarkCaptureIncomplete();
-                        }
-
+                        MarkCaptureIncomplete();
                         return;
                     }
 

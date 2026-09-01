@@ -1,6 +1,6 @@
 # HTTP Retry Check command reference
 
-`v0.1.0` has no prebuilt binary. From a source checkout with Go 1.26 or
+`v0.1.1` has no prebuilt binary. From a source checkout with Go 1.26 or
 later:
 
 ```bash
@@ -123,6 +123,13 @@ An artifact's final directory name must use printable ASCII without whitespace
 or backslashes, must not end in a dot, and must not equal the reserved staging
 name. Rejections use fixed text without exposing path or filesystem details.
 
+While writing an artifact, the CLI creates
+`.http-retry-check-artifact-stage` beside the destination and then renames it
+into place. If an interrupted command leaves that directory behind, first make
+sure no artifact command is still writing in the same parent, then remove only
+that staging directory. The CLI will not remove it automatically or replace an
+existing path.
+
 On macOS, `/tmp` normally points to `/private/tmp`, so `/tmp/new-output` is
 rejected as an output tree. Use an absent child of `/private/tmp` or another
 real directory. Running the binary at `/tmp/http-retry-check` is unaffected.
@@ -155,7 +162,7 @@ Some errors share one message so that paths and input data are not echoed:
 | --- | --- | --- |
 | `usage: http-retry-check …` (2) | Unsupported command, argument count, or `http init` language. | Compare the command with the list above. |
 | `HTTP Retry Check evidence is invalid` (2) | The input is missing, empty, too large, a symlink or unsupported object, not in the required JSON form, inconsistent with the scenario rules, or not a four-file artifact. `http explain` also rejects artifacts. | Check the accepted input kind and input rules, then regenerate suspect evidence from a validated result. |
-| `HTTP Retry Check scaffold target is unavailable` / `HTTP Retry Check artifact target is unavailable` (2) | The path violates the output rules, changed while it was checked, or cannot be written safely on this platform or filesystem. | Follow the output-destination rules; for artifacts use a portable name such as `http-retry-check-results`. |
+| `HTTP Retry Check scaffold target is unavailable` / `HTTP Retry Check artifact target is unavailable` (2) | The path violates the output rules, changed while it was checked, or cannot be written safely on this platform or filesystem. | Follow the output-destination rules. For an artifact, also check for a stale `.http-retry-check-artifact-stage` as described above. |
 | `http-retry-check internal failure` (3) | Reading, writing, cleanup, or console output failed after the command started. This is not an evidence result. | Check storage and permissions. If it repeats, report the revision, command, exit code, and a reproduction with private data removed. |
 
 ## Exit codes
@@ -166,6 +173,9 @@ Some errors share one message so that paths and input data are not echoed:
 | 1 | `check` found an unsafe or inconclusive result. |
 | 2 | Usage, evidence, or output destination was rejected. |
 | 3 | An internal read, write, or output failure prevented the command from completing. |
+
+These are normal process exits. On Unix, a closed downstream pipe may instead
+terminate the process with `SIGPIPE`, as with other command-line filters.
 
 For report-row and finding meanings, see the
 [scenario semantics](semantics.md).

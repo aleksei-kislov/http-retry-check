@@ -33,6 +33,19 @@ internal static class ScenarioRuntime
         CancellationToken cancellationToken,
         AdmissionObserver? admissionObserver = null)
     {
+        return await RunAsync(
+            client,
+            cancellationToken,
+            admissionObserver,
+            waitForDelayedResponse: null).ConfigureAwait(false);
+    }
+
+    internal static async Task<SuiteResult> RunAsync(
+        HttpMessageInvoker? client,
+        CancellationToken cancellationToken,
+        AdmissionObserver? admissionObserver,
+        Func<TimeSpan, CancellationToken, Task>? waitForDelayedResponse)
+    {
         if (client is null || cancellationToken.IsCancellationRequested)
         {
             throw new SuiteException(SuiteFailureCode.InvalidCall);
@@ -74,7 +87,8 @@ internal static class ScenarioRuntime
                     cancellationToken,
                     client,
                     admitted,
-                    () => executionAdmitted = true).ConfigureAwait(false);
+                    () => executionAdmitted = true,
+                    waitForDelayedResponse).ConfigureAwait(false);
             }
             catch (Exception exception) when (RuntimeFailure.IsRecoverable(exception))
             {
@@ -130,11 +144,16 @@ internal static class ScenarioRuntime
         CancellationToken parentToken,
         HttpMessageInvoker client,
         AdmittedScenario admitted,
-        Action onInvocationStarted)
+        Action onInvocationStarted,
+        Func<TimeSpan, CancellationToken, Task>? waitForDelayedResponse)
     {
         using var scenarioCancellation = CancellationTokenSource.CreateLinkedTokenSource(parentToken);
         scenarioCancellation.CancelAfter(RuntimeConstants.ScenarioTimeout);
-        var origin = new ScenarioOrigin(admitted, scenarioCancellation.Token, scenarioCancellation.Cancel);
+        var origin = new ScenarioOrigin(
+            admitted,
+            scenarioCancellation.Token,
+            scenarioCancellation.Cancel,
+            waitForDelayedResponse);
         HttpRequestMessage? request = null;
         TrackedContent? content = null;
         var invocation = new InvocationResult(InvocationStatus.InvalidCompletion, false);

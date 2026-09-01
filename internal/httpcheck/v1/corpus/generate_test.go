@@ -4,6 +4,7 @@ package corpus
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -45,8 +46,144 @@ func TestRegenerateHTTPRetryCheckCorpus(t *testing.T) {
 	for path, bundle := range buildInvalidBundles() {
 		writeCanonical(t, root, path, bundle)
 	}
+	writeCanonical(t, root, "capture/request-wires.json", buildCaptureBundle())
 	writeProjections(t, root, rowBundles, resultBundles)
 	writeRootManifest(t, root)
+}
+
+func buildCaptureBundle() captureBundle {
+	const (
+		endpoint   = "127.0.0.1:41001"
+		marker     = "http-retry-check-synthetic-scenario-suite-v1"
+		credential = "Bearer " + marker
+		body       = "{\"http_retry_check\":\"scenario-suite-original\"}\n"
+	)
+	head := func(method, target, protocol string, fields ...string) string {
+		return method + " " + target + " " + protocol + "\r\n" + strings.Join(fields, "\r\n") + "\r\n\r\n"
+	}
+	content := func(method, target, protocol string, extra []string, contents string) []byte {
+		fields := []string{"Host: " + endpoint, "Authorization: " + credential}
+		fields = append(fields, extra...)
+		return []byte(head(method, target, protocol, fields...) + contents)
+	}
+	expect := func(headers, complete, capture, method, destination, bodyConsistent, exact, exposed bool) captureExpectation {
+		return captureExpectation{HeadersObserved: headers, Complete: complete, CaptureComplete: capture,
+			MethodConsistent: method, DestinationConsistent: destination, BodyConsistent: bodyConsistent,
+			CredentialExact: exact, CredentialExposed: exposed}
+	}
+	valid := expect(true, true, true, true, true, true, true, true)
+	rejectedWithMarker := expect(false, false, false, true, true, true, false, true)
+	makeCase := func(id string, wire []byte, expected captureExpectation) captureCase {
+		return captureCase{ID: id, WireBase64: base64.StdEncoding.EncodeToString(wire), Expected: expected}
+	}
+	contentLength := "Content-Length: 47"
+	cases := []captureCase{
+		makeCase("baseline_content_length", content("POST", "/case", "HTTP/1.1", []string{contentLength}, body), valid),
+		makeCase("baseline_chunked_with_extensions_and_trailer", content("POST", "/case", "HTTP/1.1",
+			[]string{"Transfer-Encoding: ChUnKeD"}, "17;part=one\r\n"+body[:23]+"\r\n18\r\n"+body[23:]+"\r\n0\r\nX-Trailer: value\r\n\r\n"), valid),
+		makeCase("method_changed", content("PUT", "/case", "HTTP/1.1", []string{contentLength}, body),
+			expect(true, true, true, false, true, true, true, true)),
+		makeCase("raw_target_changed", content("POST", "/other", "HTTP/1.1", []string{contentLength}, body),
+			expect(true, true, true, true, false, true, true, true)),
+		makeCase("raw_target_invalid_percent", content("POST", "/case%zz", "HTTP/1.1", []string{contentLength}, body),
+			expect(true, true, true, true, false, true, true, true)),
+		makeCase("raw_target_absolute_form", content("POST", "http://"+endpoint+"/case", "HTTP/1.1", []string{contentLength}, body),
+			expect(true, true, true, true, false, true, true, true)),
+		makeCase("raw_target_delete_control", content("POST", "/case\x7f", "HTTP/1.1", []string{contentLength}, body), rejectedWithMarker),
+		makeCase("host_changed", []byte(head("POST", "/case", "HTTP/1.1", "Host: 127.0.0.1:41002",
+			"Authorization: "+credential, contentLength)+body),
+			expect(true, true, true, true, false, true, true, true)),
+		makeCase("syntactic_http_1_0", content("POST", "/case", "HTTP/1.0", []string{contentLength}, body),
+			expect(true, false, false, true, true, true, true, true)),
+		makeCase("protocol_multidigit_major", content("POST", "/case", "HTTP/01.1", []string{contentLength}, body), rejectedWithMarker),
+		makeCase("protocol_multidigit_minor", content("POST", "/case", "HTTP/1.10", []string{contentLength}, body), rejectedWithMarker),
+		makeCase("host_missing", []byte(head("POST", "/case", "HTTP/1.1", "Authorization: "+credential, contentLength)+body), rejectedWithMarker),
+		makeCase("header_space_before_colon", []byte(head("POST", "/case", "HTTP/1.1", "Host : "+endpoint,
+			"Authorization: "+credential, contentLength)+body), rejectedWithMarker),
+		makeCase("content_length_with_chunked", content("POST", "/case", "HTTP/1.1",
+			[]string{contentLength, "Transfer-Encoding: chunked"}, "0\r\n\r\n"), rejectedWithMarker),
+		makeCase("authorization_obs_fold", []byte(head("POST", "/case", "HTTP/1.1", "Host: "+endpoint,
+			"Authorization: Bearer", " "+marker, contentLength)+body), rejectedWithMarker),
+		makeCase("malformed_extra_header_name", content("POST", "/case", "HTTP/1.1",
+			[]string{"X Test: value", contentLength}, body), rejectedWithMarker),
+		makeCase("extra_header_obs_fold", content("POST", "/case", "HTTP/1.1",
+			[]string{"X-Test: value", " continuation", contentLength}, body), rejectedWithMarker),
+		makeCase("host_duplicated", []byte(head("POST", "/case", "HTTP/1.1", "Host: "+endpoint, "Host: "+endpoint,
+			"Authorization: "+credential, contentLength)+body), rejectedWithMarker),
+		makeCase("content_length_duplicated", content("POST", "/case", "HTTP/1.1",
+			[]string{contentLength, contentLength}, body), rejectedWithMarker),
+		makeCase("content_length_lexical_duplicate", content("POST", "/case", "HTTP/1.1",
+			[]string{"Content-Length: 047", contentLength}, body), rejectedWithMarker),
+		makeCase("content_length_leading_zero", content("POST", "/case", "HTTP/1.1",
+			[]string{"Content-Length: 047"}, body), valid),
+		makeCase("transfer_encoding_duplicated", content("POST", "/case", "HTTP/1.1",
+			[]string{"Transfer-Encoding: chunked", "Transfer-Encoding: chunked"}, "0\r\n\r\n"), rejectedWithMarker),
+		makeCase("transfer_encoding_unsupported", content("POST", "/case", "HTTP/1.1",
+			[]string{"Transfer-Encoding: gzip"}, body), rejectedWithMarker),
+		makeCase("transfer_encoding_unicode_kelvin", content("POST", "/case", "HTTP/1.1",
+			[]string{"Transfer-Encoding: chunKed"}, "0\r\n\r\n"), rejectedWithMarker),
+		makeCase("content_length_overflow", content("POST", "/case", "HTTP/1.1",
+			[]string{"Content-Length: 9223372036854775808"}, ""), rejectedWithMarker),
+		makeCase("content_length_non_decimal", content("POST", "/case", "HTTP/1.1",
+			[]string{"Content-Length: +47"}, body), rejectedWithMarker),
+		makeCase("empty_request_target", []byte("POST  HTTP/1.1\r\nHost: "+endpoint+"\r\nAuthorization: "+credential+
+			"\r\n"+contentLength+"\r\n\r\n"+body), rejectedWithMarker),
+		makeCase("request_target_control", content("POST", "/ca\tse", "HTTP/1.1", []string{contentLength}, body), rejectedWithMarker),
+		makeCase("header_value_control", content("POST", "/case", "HTTP/1.1",
+			[]string{"X-Test: before\x01after", contentLength}, body), rejectedWithMarker),
+		makeCase("marker_in_cookie", []byte(head("POST", "/case", "HTTP/1.1", "Host: "+endpoint,
+			"Cookie: session="+marker, contentLength)+body),
+			expect(true, true, true, true, true, true, false, true)),
+		makeCase("marker_in_custom_header", []byte(head("POST", "/case", "HTTP/1.1", "Host: "+endpoint,
+			"X-Copied-Value: prefix-"+marker+"-suffix", contentLength)+body),
+			expect(true, true, true, true, true, true, false, true)),
+		makeCase("marker_in_changed_raw_target", []byte(head("POST", "/case?value="+marker, "HTTP/1.1", "Host: "+endpoint,
+			"Content-Length: 47")+body),
+			expect(true, true, true, true, false, true, false, true)),
+		makeCase("marker_in_malformed_raw_target", []byte(head("POST", "/case?value="+marker+"\x7f", "HTTP/1.1",
+			"Host: "+endpoint, "Content-Length: 0")), rejectedWithMarker),
+		makeCase("marker_in_malformed_head", []byte("BROKEN "+marker+"\r\n\r\n"), rejectedWithMarker),
+		makeCase("marker_in_truncated_head", []byte("POST /case HTTP/1.1\r\nHost: "+endpoint+"\r\nCookie: "+marker), rejectedWithMarker),
+		makeCase("marker_in_body_only", []byte(head("POST", "/case", "HTTP/1.1", "Host: "+endpoint,
+			"Content-Length: 56")+"body-prefix-"+marker),
+			expect(true, true, true, true, true, false, false, false)),
+		makeCase("authorization_marker_transformed", []byte(head("POST", "/case", "HTTP/1.1", "Host: "+endpoint,
+			"Authorization: transformed-"+credential, contentLength)+body),
+			expect(true, true, true, true, true, true, false, true)),
+		makeCase("body_truncated", content("POST", "/case", "HTTP/1.1", []string{contentLength}, body[:20]),
+			expect(true, false, false, true, true, true, true, true)),
+		makeCase("body_changed_then_truncated", content("POST", "/case", "HTTP/1.1", []string{contentLength}, "x"),
+			expect(true, false, false, true, true, false, true, true)),
+		makeCase("body_changed", content("POST", "/case", "HTTP/1.1", []string{contentLength}, strings.Repeat("x", 47)),
+			expect(true, true, true, true, true, false, true, true)),
+		makeCase("chunk_size_malformed", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"z\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("chunk_extension_quoted_valid", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"17 \t; \tnote \t= \t\"a\\\"b\" \t; empty=\"\"\r\n"+body[:23]+"\r\n18\r\n"+body[23:]+"\r\n0\r\n\r\n"), valid),
+		makeCase("chunk_extension_bare_semicolon", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"2f;\r\n"+body+"\r\n0\r\n\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("chunk_extension_name_malformed", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"2f;bad name=value\r\n"+body+"\r\n0\r\n\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("chunk_extension_value_delete_control", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"2f;name=before\x7fafter\r\n"+body+"\r\n0\r\n\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("chunk_extension_quoted_unclosed", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"2f;name=\"unterminated\r\n"+body+"\r\n0\r\n\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("chunk_extension_empty_token_value", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"2f;name=\r\n"+body+"\r\n0\r\n\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("chunk_data_terminator_malformed", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"2f\r\n"+body+"\rX0\r\n\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("chunk_trailer_name_malformed", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"2f\r\n"+body+"\r\n0\r\nBad Name: value\r\n\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("chunk_trailer_value_delete_control", content("POST", "/case", "HTTP/1.1", []string{"Transfer-Encoding: chunked"},
+			"2f\r\n"+body+"\r\n0\r\nX-Trailer: before\x7fafter\r\n\r\n"), expect(true, false, false, true, true, true, true, true)),
+		makeCase("trailing_wire_byte", append(content("POST", "/case", "HTTP/1.1", []string{contentLength}, body), 'x'),
+			expect(true, true, false, true, true, true, true, true)),
+		makeCase("implicit_zero_length_body", content("POST", "/case", "HTTP/1.1", nil, ""),
+			expect(true, true, true, true, true, false, true, true)),
+		makeCase("maximum_content_length_truncated", content("POST", "/case", "HTTP/1.1",
+			[]string{"Content-Length: 9223372036854775807"}, ""), expect(true, false, false, true, true, true, true, true)),
+	}
+	return captureBundle{SchemaVersion: captureBundleIdentity, Endpoint: endpoint, Cases: cases}
 }
 
 func buildRowBundles(t *testing.T) map[string]rowBundle {

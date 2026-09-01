@@ -1,19 +1,21 @@
 package corpus
 
 const (
-	rowBundleIdentity     = "http_retry_check.conformance_rows.v1"
-	resultBundleIdentity  = "http_retry_check.conformance_results.v1"
-	invalidBundleIdentity = "http_retry_check.conformance_invalid.v1"
-	manifestIdentity      = "http_retry_check.conformance_corpus_manifest.v1"
-	productIdentity       = "http_retry_check.v1"
-	suiteIdentity         = "http_retry_check.scenario_suite.v1"
-	reportIdentity        = "http_retry_check.report.v1"
-	conformanceIdentity   = "http_retry_check.conformance.v1"
-	explanationIdentity   = "http_retry_check.scenario_explanations.v1"
-	claimCeiling          = "This report covers only six local scenarios run in the same process as the client. It does not prove compatibility, production safety, security, isolation, provenance, or behavior at other destinations."
-	artifactIdentity      = "http_retry_check.artifact_manifest.v1"
-	artifactDigestDomain  = "http_retry_check.artifact_set.v1"
-	markerValue           = "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9"
+	rowBundleIdentity         = "http_retry_check.conformance_rows.v1"
+	resultBundleIdentity      = "http_retry_check.conformance_results.v1"
+	invalidBundleIdentity     = "http_retry_check.conformance_invalid.v1"
+	manifestIdentity          = "http_retry_check.conformance_corpus_manifest.v1"
+	productIdentity           = "http_retry_check.v1"
+	suiteIdentity             = "http_retry_check.scenario_suite.v1"
+	reportIdentity            = "http_retry_check.report.v1"
+	conformanceIdentity       = "http_retry_check.conformance.v1"
+	explanationIdentity       = "http_retry_check.scenario_explanations.v1"
+	captureBundleIdentity     = "http_retry_check.capture_corpus.v1"
+	claimCeiling              = "This report covers only six local scenarios run in the same process as the client. It does not prove compatibility, production safety, security, isolation, provenance, or behavior at other destinations."
+	artifactIdentity          = "http_retry_check.artifact_manifest.v1"
+	artifactDigestDomain      = "http_retry_check.artifact_set.v1"
+	markerValue               = "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9"
+	maxCaptureCorpusWireBytes = (64 << 10) + (1 << 20) + 1
 )
 
 type rowBundle struct {
@@ -78,6 +80,29 @@ type corpusFile struct {
 	Path   string `json:"path"`
 	Size   uint64 `json:"size"`
 	SHA256 string `json:"sha256"`
+}
+
+type captureBundle struct {
+	SchemaVersion string        `json:"schema_version"`
+	Endpoint      string        `json:"endpoint"`
+	Cases         []captureCase `json:"cases"`
+}
+
+type captureCase struct {
+	ID         string             `json:"id"`
+	WireBase64 string             `json:"wire_base64"`
+	Expected   captureExpectation `json:"expected"`
+}
+
+type captureExpectation struct {
+	HeadersObserved       bool `json:"headers_observed"`
+	Complete              bool `json:"complete"`
+	CaptureComplete       bool `json:"capture_complete"`
+	MethodConsistent      bool `json:"method_consistent"`
+	DestinationConsistent bool `json:"destination_consistent"`
+	BodyConsistent        bool `json:"body_consistent"`
+	CredentialExact       bool `json:"credential_exact"`
+	CredentialExposed     bool `json:"credential_exposed"`
 }
 
 type neutralReport struct {

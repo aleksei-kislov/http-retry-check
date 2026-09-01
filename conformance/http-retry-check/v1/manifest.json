@@ -6,6 +6,11 @@
   "conformance_identity": "http_retry_check.conformance.v1",
   "files": [
     {
+      "path": "capture/request-wires.json",
+      "size": 32975,
+      "sha256": "ed22c7a0aec6bb37f4c9e5ae36def9088bc10c03b95556e16eae54819d7d983e"
+    },
+    {
       "path": "invalid/artifact.json",
       "size": 7511,
       "sha256": "91c470a515d1d48559c12b247ced3ed7c660c1a370977d8059d4582612a37d73"

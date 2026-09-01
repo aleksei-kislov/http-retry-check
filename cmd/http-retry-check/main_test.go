@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -15,7 +16,10 @@ func TestBuiltBinaryExposesOnlyFocusedHTTPCommands(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		binary += ".exe"
 	}
-	build := exec.Command("go", "build", "-o", binary, ".")
+	// This test covers the deterministic development fallback even when the
+	// checkout itself happens to be on a release tag. CI separately builds from
+	// a local semantic-version tag and checks the stamped version.
+	build := exec.Command("go", "build", "-buildvcs=false", "-o", binary, ".")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build binary: %v\n%s", err, output)
 	}
@@ -26,7 +30,7 @@ func TestBuiltBinaryExposesOnlyFocusedHTTPCommands(t *testing.T) {
 		wantStdout string
 		wantStderr string
 	}{
-		{args: []string{"version"}, wantStdout: "http-retry-check 0.0.0-dev\n"},
+		{args: []string{"version"}, wantStdout: "http-retry-check "},
 		{args: []string{"help", "http"}, wantStdout: "usage: http-retry-check http init <go|csharp> <new-scaffold-directory>\n"},
 		{args: []string{"doctor"}, wantExit: 2, wantStderr: "usage: http-retry-check <command>\n"},
 	}
@@ -48,6 +52,11 @@ func TestBuiltBinaryExposesOnlyFocusedHTTPCommands(t *testing.T) {
 			!strings.HasPrefix(stderr.String(), test.wantStderr) ||
 			(test.wantExit == 0 && stderr.Len() != 0) || (test.wantExit != 0 && stdout.Len() != 0) {
 			t.Errorf("run %q = exit %d, stdout %q, stderr %q", test.args, exit, stdout.String(), stderr.String())
+		}
+		if test.args[0] == "version" && !regexp.MustCompile(
+			`^http-retry-check (?:0\.0\.0-dev|v[0-9]+\.[0-9]+\.[0-9]+(?:[+-][0-9A-Za-z.-]+)?)\n$`,
+		).MatchString(stdout.String()) {
+			t.Errorf("version output = %q", stdout.String())
 		}
 	}
 }

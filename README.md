@@ -5,7 +5,7 @@ failure scenarios. It shows whether the client replays accepted requests,
 changes a replayed body, forwards credentials to another origin, exceeds its
 retry limit, or retries before the first request's outcome is known.
 
-> **Release status:** `v0.1.0` is the first public source release. Go users can
+> **Release status:** `v0.1.1` is the current public source release. Go users can
 > use the tagged module; .NET users currently build from source. No NuGet
 > package or prebuilt binaries are available yet, and APIs may change before
 > `v1.0.0`.
@@ -41,7 +41,7 @@ HTTP Retry Check reproduces six HTTP/1 situations locally:
 | Accepted, then disconnected | The origin accepts the request and closes without responding. A replay can repeat an accepted effect. |
 | Acceptance uncertain | The origin reads the request and closes before confirming whether it took effect. A retry is unsafe because the first outcome is unknown. |
 | Changed-body replay | The origin compares the bytes of any replay with the accepted request body. |
-| Cross-origin redirect | One local origin redirects to another and the suite checks whether its synthetic `Authorization` value reaches the target. |
+| Cross-origin redirect | One local origin redirects to another and the suite checks whether its synthetic credential marker reaches the target in the request head. |
 | Retry limit | A retryable response is returned and the suite checks that the client makes no more than two attempts. |
 | Delayed response | The origin accepts the request and delays its response, revealing overlapping or premature retries. |
 

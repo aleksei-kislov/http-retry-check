@@ -33,7 +33,7 @@ body:
     attributes:
       label: Version or revision
       description: Provide the release tag or commit hash you tested.
-      placeholder: v0.1.0 or a commit hash
+      placeholder: v0.1.1 or a commit hash
     validations:
       required: true
   - type: input

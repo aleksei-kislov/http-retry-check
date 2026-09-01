@@ -34,6 +34,14 @@ public sealed class Http1ChunkedCaptureTests
     }
 
     [TestMethod]
+    public async Task QuotedAndEscapedChunkExtensionsPassTheRetryLimitScenario()
+    {
+        var result = await RunAsync(ChunkedControlMode.QuotedEscapedExtension);
+
+        AssertPassingRetryLimitRow(result);
+    }
+
+    [TestMethod]
     public async Task MalformedChunkTerminatorIsInconclusive()
     {
         var result = await RunAsync(ChunkedControlMode.MalformedTerminator);
@@ -61,6 +69,54 @@ public sealed class Http1ChunkedCaptureTests
     public async Task EarlyCloseDuringChunkDataIsInconclusive()
     {
         var result = await RunAsync(ChunkedControlMode.EarlyClose);
+
+        AssertIncompleteRetryLimitRow(result);
+    }
+
+    [TestMethod]
+    public async Task DeleteControlInTrailerValueIsInconclusive()
+    {
+        var result = await RunAsync(ChunkedControlMode.TrailerDeleteControl);
+
+        AssertIncompleteRetryLimitRow(result);
+    }
+
+    [TestMethod]
+    public async Task BareChunkExtensionIsInconclusive()
+    {
+        var result = await RunAsync(ChunkedControlMode.BareExtension);
+
+        AssertIncompleteRetryLimitRow(result);
+    }
+
+    [TestMethod]
+    public async Task MalformedChunkExtensionNameIsInconclusive()
+    {
+        var result = await RunAsync(ChunkedControlMode.MalformedExtensionName);
+
+        AssertIncompleteRetryLimitRow(result);
+    }
+
+    [TestMethod]
+    public async Task DeleteControlInChunkExtensionIsInconclusive()
+    {
+        var result = await RunAsync(ChunkedControlMode.ExtensionDeleteControl);
+
+        AssertIncompleteRetryLimitRow(result);
+    }
+
+    [TestMethod]
+    public async Task UnclosedQuotedChunkExtensionIsInconclusive()
+    {
+        var result = await RunAsync(ChunkedControlMode.UnclosedQuotedExtension);
+
+        AssertIncompleteRetryLimitRow(result);
+    }
+
+    [TestMethod]
+    public async Task EmptyTokenChunkExtensionValueIsInconclusive()
+    {
+        var result = await RunAsync(ChunkedControlMode.EmptyTokenExtensionValue);
 
         AssertIncompleteRetryLimitRow(result);
     }
@@ -116,10 +172,17 @@ internal enum ChunkedControlMode
 {
     ValidMultiChunk,
     ExtensionsAndTrailers,
+    QuotedEscapedExtension,
     MalformedTerminator,
     MalformedSize,
     OversizedFraming,
     EarlyClose,
+    TrailerDeleteControl,
+    BareExtension,
+    MalformedExtensionName,
+    ExtensionDeleteControl,
+    UnclosedQuotedExtension,
+    EmptyTokenExtensionValue,
 }
 
 internal sealed class ChunkedControlHandler : HttpMessageHandler
@@ -158,10 +221,44 @@ internal sealed class ChunkedControlHandler : HttpMessageHandler
         {
             ChunkedControlMode.ValidMultiChunk => BuildValidMultiChunk(target, credential, body),
             ChunkedControlMode.ExtensionsAndTrailers => BuildExtensionsAndTrailers(target, credential, body),
+            ChunkedControlMode.QuotedEscapedExtension => BuildChunkExtensionRequest(
+                target,
+                credential,
+                body,
+                " \t; \tlabel \t= \t\"one\\\"two\\\\three\";empty=\"\";flag"),
             ChunkedControlMode.MalformedTerminator => BuildMalformedTerminator(target, credential, body),
             ChunkedControlMode.MalformedSize => BuildMalformedSize(target, credential, body),
             ChunkedControlMode.OversizedFraming => BuildOversizedFraming(target, credential),
             ChunkedControlMode.EarlyClose => BuildEarlyClose(target, credential, body),
+            ChunkedControlMode.TrailerDeleteControl => BuildTrailerDeleteControl(
+                target,
+                credential,
+                body),
+            ChunkedControlMode.BareExtension => BuildChunkExtensionRequest(
+                target,
+                credential,
+                body,
+                ";"),
+            ChunkedControlMode.MalformedExtensionName => BuildChunkExtensionRequest(
+                target,
+                credential,
+                body,
+                ";bad/name=value"),
+            ChunkedControlMode.ExtensionDeleteControl => BuildChunkExtensionRequest(
+                target,
+                credential,
+                body,
+                ";name=value\u007f"),
+            ChunkedControlMode.UnclosedQuotedExtension => BuildChunkExtensionRequest(
+                target,
+                credential,
+                body,
+                ";name=\"unterminated"),
+            ChunkedControlMode.EmptyTokenExtensionValue => BuildChunkExtensionRequest(
+                target,
+                credential,
+                body,
+                ";name="),
             _ => throw new InvalidOperationException("unknown chunked control mode"),
         };
 
@@ -171,7 +268,8 @@ internal sealed class ChunkedControlHandler : HttpMessageHandler
                 target,
                 wire,
                 allowEarlyClose: mode is not ChunkedControlMode.ValidMultiChunk and
-                    not ChunkedControlMode.ExtensionsAndTrailers,
+                    not ChunkedControlMode.ExtensionsAndTrailers and
+                    not ChunkedControlMode.QuotedEscapedExtension,
                 cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -248,6 +346,26 @@ internal sealed class ChunkedControlHandler : HttpMessageHandler
         WriteAscii(wire, body.Length.ToString("x", CultureInfo.InvariantCulture));
         WriteAscii(wire, "\r\n");
         wire.Write(body.AsSpan(0, body.Length / 2));
+        return wire.ToArray();
+    }
+
+    private static byte[] BuildTrailerDeleteControl(Uri target, string credential, byte[] body)
+    {
+        using var wire = NewChunkedRequest(target, credential);
+        WriteChunk(wire, body, extension: null);
+        WriteAscii(wire, "0\r\nX-Trailer: value\u007f\r\n\r\n");
+        return wire.ToArray();
+    }
+
+    private static byte[] BuildChunkExtensionRequest(
+        Uri target,
+        string credential,
+        byte[] body,
+        string extension)
+    {
+        using var wire = NewChunkedRequest(target, credential);
+        WriteChunk(wire, body, extension);
+        WriteAscii(wire, "0\r\n\r\n");
         return wire.ToArray();
     }
 

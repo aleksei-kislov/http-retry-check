@@ -16,6 +16,7 @@ internal enum RawOriginControlMode
 {
     AcceptPreEffectOverlap,
     ChangedBodyPreEffectOverlap,
+    ChangedBodyTruncatedReplay,
     DelayedOverlap,
     SameConnectionTrailing,
     MalformedHeader,
@@ -47,7 +48,8 @@ internal sealed class RawOriginControlHandler : HttpMessageHandler
         var targetCall = mode switch
         {
             RawOriginControlMode.AcceptPreEffectOverlap => 1,
-            RawOriginControlMode.ChangedBodyPreEffectOverlap => 3,
+            RawOriginControlMode.ChangedBodyPreEffectOverlap or
+                RawOriginControlMode.ChangedBodyTruncatedReplay => 3,
             RawOriginControlMode.DelayedOverlap or RawOriginControlMode.SameConnectionTrailing => 6,
             _ => 5,
         };
@@ -73,6 +75,13 @@ internal sealed class RawOriginControlHandler : HttpMessageHandler
                 await SendPreEffectOverlapAsync(
                     target,
                     WithoutLastByte(BuildContentLengthRequest(target, credential, ordinaryBody)),
+                    cancellationToken).ConfigureAwait(false);
+                break;
+            case RawOriginControlMode.ChangedBodyTruncatedReplay:
+                await SendChangedBodyTruncatedReplayAsync(
+                    target,
+                    credential,
+                    ordinaryBody,
                     cancellationToken).ConfigureAwait(false);
                 break;
             case RawOriginControlMode.DelayedOverlap:
@@ -180,6 +189,36 @@ internal sealed class RawOriginControlHandler : HttpMessageHandler
         await Task.WhenAll(
             DrainAsync(first, timeout.Token),
             DrainAsync(second, timeout.Token)).ConfigureAwait(false);
+    }
+
+    private static async Task SendChangedBodyTruncatedReplayAsync(
+        Uri target,
+        string credential,
+        byte[] body,
+        CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(4));
+
+        using (var first = await ConnectAsync(target, timeout.Token).ConfigureAwait(false))
+        {
+            await SendAllAsync(
+                first,
+                BuildContentLengthRequest(target, credential, body),
+                false,
+                timeout.Token).ConfigureAwait(false);
+            ShutdownSend(first);
+            await DrainAsync(first, timeout.Token).ConfigureAwait(false);
+        }
+
+        using var replay = await ConnectAsync(target, timeout.Token).ConfigureAwait(false);
+        await SendAllAsync(
+            replay,
+            BuildTruncatedChangedRequest(target, credential, body),
+            false,
+            timeout.Token).ConfigureAwait(false);
+        ShutdownSend(replay);
+        await DrainAsync(replay, timeout.Token).ConfigureAwait(false);
     }
 
     private static async Task SendSingleAsync(
@@ -321,6 +360,23 @@ internal sealed class RawOriginControlHandler : HttpMessageHandler
             "Malformed Header\r\n" +
             $"Content-Length: {body.Length}\r\n\r\n");
         return Combine(header, body);
+    }
+
+    private static byte[] BuildTruncatedChangedRequest(Uri target, string credential, byte[] body)
+    {
+        if (body.Length == 0)
+        {
+            throw new InvalidOperationException("controlled request body cannot be empty");
+        }
+
+        var changed = body[0] == (byte)'X' ? (byte)'Y' : (byte)'X';
+        var header = Encoding.ASCII.GetBytes(
+            $"POST {target.PathAndQuery} HTTP/1.1\r\n" +
+            $"Host: {target.Host}:{target.Port}\r\n" +
+            $"Authorization: {credential}\r\n" +
+            $"Content-Length: {body.Length}\r\n" +
+            "Connection: close\r\n\r\n");
+        return Combine(header, [changed]);
     }
 
     private static byte[] BuildHeaderSizedRequest(

@@ -3,6 +3,7 @@ package corpus
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -25,7 +26,7 @@ func TestRootManifestRecursivelyBindsCorpus(t *testing.T) {
 	if len(manifestBytes) == 0 || manifest.SchemaVersion != manifestIdentity ||
 		manifest.ProductIdentity != productIdentity || manifest.SuiteIdentity != suiteIdentity ||
 		manifest.ReportIdentity != reportIdentity || manifest.ConformanceIdentity != conformanceIdentity ||
-		manifest.Files == nil || len(manifest.Files) != 29 {
+		manifest.Files == nil || len(manifest.Files) != 30 {
 		t.Fatalf("root manifest identity/shape drift: %#v", manifest)
 	}
 
@@ -85,6 +86,41 @@ func TestRootManifestRecursivelyBindsCorpus(t *testing.T) {
 			t.Fatalf("descriptor %q does not bind the current regular file: got %#v", descriptor.Path, got)
 		}
 		previous = descriptor.Path
+	}
+}
+
+func TestCaptureCorpusIsCanonicalAndBounded(t *testing.T) {
+	var bundle captureBundle
+	contents := readCanonical(t, "capture/request-wires.json", &bundle)
+	if len(contents) == 0 || bundle.SchemaVersion != captureBundleIdentity ||
+		bundle.Endpoint != "127.0.0.1:41001" || bundle.Cases == nil || len(bundle.Cases) != 53 {
+		t.Fatalf("capture corpus identity/shape drift: %#v", bundle)
+	}
+	seen := make(map[string]bool, len(bundle.Cases))
+	for _, candidate := range bundle.Cases {
+		if !closedID(candidate.ID) || seen[candidate.ID] || candidate.WireBase64 == "" {
+			t.Fatalf("invalid capture case descriptor: %#v", candidate)
+		}
+		seen[candidate.ID] = true
+		wire, err := base64.StdEncoding.Strict().DecodeString(candidate.WireBase64)
+		if err != nil || len(wire) == 0 || len(wire) > maxCaptureCorpusWireBytes {
+			t.Fatalf("capture case %q wire is invalid or unbounded: %v/%d", candidate.ID, err, len(wire))
+		}
+		clear(wire)
+	}
+	for _, required := range []string{
+		"marker_in_malformed_head", "marker_in_malformed_raw_target", "marker_in_truncated_head", "marker_in_body_only",
+		"raw_target_invalid_percent", "raw_target_absolute_form", "raw_target_delete_control",
+		"content_length_leading_zero", "content_length_lexical_duplicate",
+		"body_changed_then_truncated",
+		"chunk_trailer_value_delete_control",
+		"transfer_encoding_unicode_kelvin",
+		"chunk_extension_quoted_valid", "chunk_extension_bare_semicolon", "chunk_extension_name_malformed",
+		"chunk_extension_value_delete_control", "chunk_extension_quoted_unclosed", "chunk_extension_empty_token_value",
+	} {
+		if !seen[required] {
+			t.Fatalf("capture corpus missing required case %q", required)
+		}
 	}
 }
 
@@ -246,12 +282,12 @@ func TestScenarioIncompleteCannotBeProducedAndForgeryIsRejected(t *testing.T) {
 	// These counts pin the number of accepted combinations. Update them only
 	// when the scenario semantics change deliberately.
 	want := map[string]uint64{
-		"accept_then_disconnect":            1300,
-		"disconnect_before_acceptance":      596,
-		"changed_body_retry":                1300,
-		"cross_origin_redirect_credentials": 9724,
-		"retry_limit":                       2516,
-		"delayed_response":                  32500,
+		"accept_then_disconnect":            1348,
+		"disconnect_before_acceptance":      644,
+		"changed_body_retry":                1348,
+		"cross_origin_redirect_credentials": 9812,
+		"retry_limit":                       2564,
+		"delayed_response":                  32548,
 	}
 	for scenario, count := range want {
 		if validCounts[scenario] != count {

@@ -135,6 +135,7 @@ func TestControlledLiteralIdentity(t *testing.T) {
 		})
 	}
 	if syntheticBodyText == changedSyntheticBodyText ||
+		syntheticCredentialMarker != "http-retry-check-synthetic-scenario-suite-v1" ||
 		syntheticCredential != "Bearer http-retry-check-synthetic-scenario-suite-v1" ||
 		controlledPath != "/case" || delayedResponseDuration != 250*time.Millisecond ||
 		!strings.HasPrefix(noContentResponseText, "HTTP/1.1 204 ") ||
@@ -1013,9 +1014,49 @@ func TestMalformedOversizedAndChunkFramingInputsAreBounded(t *testing.T) {
 			observation := finishRawOrigin(t, origin, caseContext, cancelCase)
 			row, ok := newScenarioResult(ScenarioAcceptThenDisconnect, observation)
 			if !ok || observation.CaptureComplete || observation.EffectCount != 0 ||
-				row.Assessment != AssessmentInconclusive ||
 				!containsFinding(row.Findings, FindingCaptureIncomplete) {
 				t.Fatalf("bounded malformed row = %#v, ok=%v", row, ok)
+			}
+			if observation.BodyConsistent {
+				if row.Assessment != AssessmentInconclusive || containsFinding(row.Findings, FindingBodyChanged) {
+					t.Fatalf("bounded malformed head = %#v", row)
+				}
+			} else if row.Assessment != AssessmentUnsafeBehaviorObserved ||
+				!containsFinding(row.Findings, FindingBodyChanged) {
+				t.Fatalf("bounded mismatched body = %#v", row)
+			}
+		})
+	}
+}
+
+func TestChunkExtensionGrammar(t *testing.T) {
+	tests := []struct {
+		name  string
+		line  string
+		valid bool
+	}{
+		{name: "no extension", line: "17\r\n", valid: true},
+		{name: "token value", line: "17;part=one\r\n", valid: true},
+		{name: "flag", line: "17;flag\r\n", valid: true},
+		{name: "quoted escaped and empty", line: "17 \t; \tname \t= \t\"a\\\"b\" \t; empty=\"\"\r\n", valid: true},
+		{name: "quoted obs text pair", line: "17;name=\"a\\\x80b\"\r\n", valid: true},
+		{name: "bare semicolon", line: "17;\r\n"},
+		{name: "malformed name", line: "17;bad name=value\r\n"},
+		{name: "empty token value", line: "17;name=\r\n"},
+		{name: "unclosed quote", line: "17;name=\"unterminated\r\n"},
+		{name: "delete in token value", line: "17;name=value\x7f\r\n"},
+		{name: "delete in quoted value", line: "17;name=\"value\x7f\"\r\n"},
+		{name: "control in quoted pair", line: "17;name=\"a\\\x01b\"\r\n"},
+		{name: "stray byte after quote", line: "17;name=\"value\"x\r\n"},
+		{name: "trailing whitespace", line: "17 \r\n"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reader := newBoundedWireReader(strings.NewReader(test.line), int64(len(test.line)+1))
+			size, valid := readChunkSize(reader)
+			reader.clear()
+			if valid != test.valid || valid && size != 0x17 {
+				t.Fatalf("chunk line = size:%x valid:%v, want size:17 valid:%v", size, valid, test.valid)
 			}
 		})
 	}
@@ -1525,6 +1566,32 @@ func TestUnexpectedListenerCloseIsCaptureFailureNotCleanupFailure(t *testing.T) 
 	if !ok || observation.CaptureComplete || observation.Cleanup != CleanupSucceeded ||
 		row.Assessment != AssessmentInconclusive || !containsFinding(row.Findings, FindingCaptureIncomplete) {
 		t.Fatalf("unexpected listener close row = %#v, ok=%v", row, ok)
+	}
+}
+
+func TestCleanupFailureForcesCaptureIncomplete(t *testing.T) {
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrapped := &sanitationCloseMarkerListener{Listener: listener}
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	transport := &http.Transport{Proxy: nil, Protocols: protocols, DisableKeepAlives: true}
+	defer transport.CloseIdleConnections()
+	observation, settled := executeScenario(
+		context.Background(),
+		&http.Client{Transport: transport},
+		admittedScenario{scenario: ScenarioRetryLimit, listeners: []net.Listener{wrapped}},
+		productionDependencies(),
+	)
+	row, valid := newScenarioResult(ScenarioRetryLimit, observation)
+	if settled || !valid || observation.CaptureComplete || observation.Cleanup != CleanupFailed ||
+		observation.AttemptCount != 1 || observation.ResponseCompleteCount != 1 ||
+		row.Assessment != AssessmentInconclusive ||
+		!containsFinding(row.Findings, FindingCaptureIncomplete) ||
+		!containsFinding(row.Findings, FindingCleanupUnverified) {
+		t.Fatalf("cleanup-failure row = %#v, settled=%v valid=%v", row, settled, valid)
 	}
 }
 

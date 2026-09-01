@@ -24,6 +24,9 @@ func FuzzReadScenarioAttempt(f *testing.F) {
 			"5\r\nhello\r\n0\r\nX-Trailer: value\r\n\r\n",
 	))
 	f.Add([]byte("not an HTTP request\r\n\r\n"))
+	f.Add([]byte("BROKEN " + syntheticCredentialMarker + "\r\n\r\n"))
+	f.Add([]byte("POST /case HTTP/1.1\r\nHost: 127.0.0.1:41001\r\nCookie: " +
+		syntheticCredentialMarker))
 
 	f.Fuzz(func(t *testing.T, wire []byte) {
 		// Keep fuzz cases cheap while still covering the complete header parser
@@ -46,8 +49,8 @@ func FuzzReadScenarioAttempt(f *testing.F) {
 		if observed.credentialExact && !observed.credentialExposed {
 			t.Fatal("an exact credential was not classified as exposed")
 		}
-		if !observed.headersObserved && (observed.credentialExact || observed.credentialExposed) {
-			t.Fatal("credential state was derived without parsed headers")
+		if !observed.headersObserved && observed.credentialExact {
+			t.Fatal("exact source credential was derived without parsed headers")
 		}
 		if observed.remainingReadBudget < 0 || observed.remainingReadBudget > maxRequestBodySize+1 {
 			t.Fatalf("remaining read budget escaped its bound: %d", observed.remainingReadBudget)

@@ -186,7 +186,7 @@ public sealed class SourceAuthorityTests
             ("AssemblyName", "HttpRetryCheck"),
             ("RootNamespace", "HttpRetryCheck"),
             ("PackageId", "HttpRetryCheck"),
-            ("VersionPrefix", "0.1.0"),
+            ("VersionPrefix", "0.1.1"),
             ("IsPackable", "false"));
         CollectionAssert.AreEqual(
             new[] { Path.GetFullPath(Path.Combine(root, "csharp", "Directory.Build.props")) },

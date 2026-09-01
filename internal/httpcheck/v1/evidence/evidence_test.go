@@ -64,6 +64,49 @@ func TestIndependentEvidenceCodecCoversAllOutcomes(t *testing.T) {
 	}
 }
 
+func TestIncompleteChangedBodyReportRemainsValidUnsafeEvidence(t *testing.T) {
+	report := positiveReport()
+	observations := make([]Observation, len(report.Scenarios))
+	for index := range report.Scenarios {
+		observations[index] = report.Scenarios[index].Observation
+	}
+	observations[2] = Observation{
+		CaptureComplete: false, AttemptCount: 1,
+		MethodConsistent: true, DestinationConsistent: true, BodyConsistent: false,
+		Credential: credentialNotObserved, Cleanup: cleanupSucceeded,
+	}
+	report = reportFromObservations(observations)
+	if err := ValidateReport(report); err != nil {
+		t.Fatal(err)
+	}
+	wantFindings := []string{
+		findingCaptureIncomplete,
+		findingBodyChanged,
+		findingCredentialNotObserved,
+		findingEffectNotObserved,
+	}
+	row := report.Scenarios[2]
+	if report.Assessment != assessmentUnsafe || report.Outcome != OutcomeFail ||
+		report.Summary != (Summary{Scenarios: 6, Passed: 5, Failed: 1}) ||
+		row.Assessment != assessmentUnsafe || len(row.Findings) != len(wantFindings) {
+		t.Fatalf("incomplete changed-body report = %#v", report)
+	}
+	for index, code := range wantFindings {
+		if row.Findings[index].Code != code || row.Findings[index].Text != findingText(code) {
+			t.Fatalf("finding %d = %#v, want %q", index, row.Findings[index], code)
+		}
+	}
+	encoded, err := EncodeReport(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := DecodeReport(encoded)
+	if err != nil || decoded.Assessment != assessmentUnsafe ||
+		decoded.Scenarios[2].Assessment != assessmentUnsafe {
+		t.Fatalf("decode = %#v/%v", decoded, err)
+	}
+}
+
 func TestReportSemanticAndCanonicalChangesAreRejected(t *testing.T) {
 	base := positiveReport()
 	mutations := map[string]func(*Report){

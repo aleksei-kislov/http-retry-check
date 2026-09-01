@@ -127,3 +127,29 @@ Check Markdown links, example paths, commands, and claims with every
 documentation change. Keep the public identifiers consistent:
 `github.com/aleksei-kislov/http-retry-check`, `http-retry-check`, and
 `HttpRetryCheck.V1`.
+
+## Verify a release candidate
+
+Run the Go and C# checks above on the clean commit that will be tagged. The Go
+workflow creates a semantic-version tag in a disposable standalone clone,
+builds the CLI with VCS stamping enabled, and checks its `version` output. It
+never creates or changes a tag in the source repository or remote.
+
+After both GitHub workflows pass on that exact commit, create the release tag.
+Tag pushes run both workflows again. Wait for them to pass, then verify a fresh
+standalone clone of the tag before publishing artifacts:
+
+```bash
+git status --short
+git rev-parse HEAD
+git rev-list -n 1 v0.1.1
+go test -p=1 -timeout=15m -count=1 ./...
+release_binary="$(mktemp -d)/http-retry-check"
+go build -o "$release_binary" ./cmd/http-retry-check
+"$release_binary" version
+```
+
+The two revisions must match, the working tree must be clean, and the command
+must print `http-retry-check v0.1.1`. Replace `v0.1.1` with the candidate tag
+for later releases. Do not move a published tag; fix a rejected candidate on a
+new commit and test that commit again.

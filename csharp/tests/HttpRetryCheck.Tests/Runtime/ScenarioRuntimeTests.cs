@@ -60,6 +60,34 @@ public sealed class ScenarioRuntimeTests
     }
 
     [TestMethod]
+    public async Task DelayedResponseWaitUsesTheScenarioClock()
+    {
+        var waits = 0;
+        TimeSpan observedDuration = default;
+        CancellationToken observedToken = default;
+        Task WaitAsync(TimeSpan duration, CancellationToken cancellationToken)
+        {
+            waits++;
+            observedDuration = duration;
+            observedToken = cancellationToken;
+            return Task.CompletedTask;
+        }
+
+        using var handler = new ScenarioTokenRecordingHandler();
+        using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
+        var result = await RunWithDelayedResponseWaiterAsync(invoker, WaitAsync);
+
+        ScenarioSuite.Validate(result);
+        var delayed = result.Scenarios[5];
+        Assert.AreEqual(1, waits);
+        Assert.AreEqual(TimeSpan.FromMilliseconds(250), observedDuration);
+        Assert.IsTrue(observedToken.CanBeCanceled);
+        Assert.AreEqual(handler.DelayedScenarioToken, observedToken);
+        Assert.AreEqual((uint)1, delayed.Observation.DelayCompleteCount, Describe(result));
+        Assert.AreEqual((uint)1, delayed.Observation.ResponseAttemptCount, Describe(result));
+    }
+
+    [TestMethod]
     public async Task CallerRetryAfterAcceptedDisconnectPreservesUnsafeEvidence()
     {
         using var client = RuntimeTestClients.CreateOrdinaryClient(new RetryingHandler());
@@ -120,6 +148,8 @@ public sealed class ScenarioRuntimeTests
     [DataRow((int)RedirectCredentialMode.Prefix)]
     [DataRow((int)RedirectCredentialMode.Suffix)]
     [DataRow((int)RedirectCredentialMode.MultipleWithSuffix)]
+    [DataRow((int)RedirectCredentialMode.Cookie)]
+    [DataRow((int)RedirectCredentialMode.CustomHeader)]
     public async Task RedirectContainingSyntheticCredentialIsUnsafe(int modeValue)
     {
         var mode = (RedirectCredentialMode)modeValue;
@@ -135,6 +165,28 @@ public sealed class ScenarioRuntimeTests
         CollectionAssert.Contains(
             new List<FindingCode>(redirect.Findings),
             FindingCode.CredentialExposedAtTarget);
+    }
+
+    [TestMethod]
+    public async Task MalformedRedirectTargetStillPreservesCredentialExposure()
+    {
+        using var client = RuntimeTestClients.CreateOrdinaryClient(
+            new RedirectExposureHandler(RedirectCredentialMode.MalformedTarget));
+
+        var result = await ScenarioSuite.RunAsync(client);
+
+        ScenarioSuite.Validate(result);
+        var redirect = result.Scenarios[3];
+        Assert.AreEqual(Assessment.UnsafeBehaviorObserved, result.Assessment, Describe(result));
+        Assert.AreEqual(Assessment.UnsafeBehaviorObserved, redirect.Assessment, Describe(result));
+        Assert.AreEqual(CredentialState.ExposedAtTarget, redirect.Observation.Credential);
+        Assert.IsFalse(redirect.Observation.CaptureComplete);
+        CollectionAssert.Contains(
+            new List<FindingCode>(redirect.Findings),
+            FindingCode.CredentialExposedAtTarget);
+        CollectionAssert.Contains(
+            new List<FindingCode>(redirect.Findings),
+            FindingCode.CaptureIncomplete);
     }
 
     [TestMethod]
@@ -313,6 +365,31 @@ public sealed class ScenarioRuntimeTests
     }
 
     [TestMethod]
+    public async Task TruncatedChangedReplayPreservesUnsafeBodyEvidence()
+    {
+        var result = await RunRawControlAsync(RawOriginControlMode.ChangedBodyTruncatedReplay);
+
+        Assert.AreEqual(Assessment.UnsafeBehaviorObserved, result.Assessment, Describe(result));
+        var changed = result.Scenarios[2];
+        Assert.AreEqual(ScenarioId.ChangedBodyRetry, changed.Scenario);
+        Assert.AreEqual(Assessment.UnsafeBehaviorObserved, changed.Assessment, Describe(result));
+        Assert.AreEqual((uint)2, changed.Observation.AttemptCount);
+        Assert.AreEqual((ulong)1, changed.Observation.EffectCount);
+        Assert.AreEqual((uint)1, changed.Observation.RetryAfterEffectCount);
+        Assert.IsFalse(changed.Observation.CaptureComplete);
+        Assert.IsFalse(changed.Observation.BodyConsistent);
+        CollectionAssert.Contains(
+            new List<FindingCode>(changed.Findings),
+            FindingCode.RetryAfterAcceptedRequest);
+        CollectionAssert.Contains(
+            new List<FindingCode>(changed.Findings),
+            FindingCode.BodyChanged);
+        CollectionAssert.Contains(
+            new List<FindingCode>(changed.Findings),
+            FindingCode.CaptureIncomplete);
+    }
+
+    [TestMethod]
     public async Task DelayedConcurrentRetryRecordsOverlapAndRetryBeforeResponse()
     {
         var result = await RunRawControlAsync(RawOriginControlMode.DelayedOverlap);
@@ -384,13 +461,13 @@ public sealed class ScenarioRuntimeTests
 
         var exactRetry = exact.Scenarios[4];
         Assert.IsTrue(exactRetry.Observation.CaptureComplete, Describe(exact));
-        Assert.IsFalse(exactRetry.Observation.BodyConsistent);
-        Assert.AreEqual((uint)1, exactRetry.Observation.ResponseAttemptCount);
+        Assert.IsFalse(exactRetry.Observation.BodyConsistent, Describe(exact));
+        Assert.AreEqual((uint)1, exactRetry.Observation.ResponseAttemptCount, Describe(exact));
         CollectionAssert.Contains(new List<FindingCode>(exactRetry.Findings), FindingCode.BodyChanged);
         var exceededRetry = exceeded.Scenarios[4];
-        Assert.AreEqual((uint)1, exceededRetry.Observation.AttemptCount);
-        Assert.IsFalse(exceededRetry.Observation.CaptureComplete);
-        Assert.AreEqual((uint)0, exceededRetry.Observation.ResponseAttemptCount);
+        Assert.AreEqual((uint)1, exceededRetry.Observation.AttemptCount, Describe(exceeded));
+        Assert.IsFalse(exceededRetry.Observation.CaptureComplete, Describe(exceeded));
+        Assert.AreEqual((uint)0, exceededRetry.Observation.ResponseAttemptCount, Describe(exceeded));
     }
 
     [TestMethod]
@@ -803,6 +880,34 @@ public sealed class ScenarioRuntimeTests
             modifiers: null) ?? throw new AssertFailedException("Observed runtime entry is unavailable.");
         return method.Invoke(null, [invoker, cancellationToken, observer]) as Task<SuiteResult>
             ?? throw new AssertFailedException("Observed runtime entry returned no task.");
+    }
+
+    private static Task<SuiteResult> RunWithDelayedResponseWaiterAsync(
+        HttpMessageInvoker invoker,
+        Func<TimeSpan, CancellationToken, Task> waitForDelayedResponse)
+    {
+        Assembly assembly = typeof(ScenarioSuite).Assembly;
+        Type observerType = assembly.GetType(
+            "HttpRetryCheck.V1.Runtime.AdmissionObserver",
+            throwOnError: true) ?? throw new AssertFailedException("Admission observer type is unavailable.");
+        Type runtimeType = assembly.GetType(
+            "HttpRetryCheck.V1.Runtime.ScenarioRuntime",
+            throwOnError: true) ?? throw new AssertFailedException("Scenario runtime type is unavailable.");
+        MethodInfo method = runtimeType.GetMethod(
+            "RunAsync",
+            BindingFlags.Static | BindingFlags.NonPublic,
+            binder: null,
+            [
+                typeof(HttpMessageInvoker),
+                typeof(CancellationToken),
+                observerType,
+                typeof(Func<TimeSpan, CancellationToken, Task>),
+            ],
+            modifiers: null) ?? throw new AssertFailedException("Timed runtime entry is unavailable.");
+        return method.Invoke(
+            null,
+            [invoker, CancellationToken.None, null, waitForDelayedResponse]) as Task<SuiteResult>
+            ?? throw new AssertFailedException("Timed runtime entry returned no task.");
     }
 
     private static async Task AssertListenerClosedAsync(int port)

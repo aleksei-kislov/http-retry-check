@@ -26,7 +26,8 @@ The runtime reserves all seven listeners before running the scenarios in the
 order above. It continues only under these rules:
 
 - Client code that ignores its context or cancellation token can block the run;
-  the suite cannot stop code in its own process.
+  the suite cannot stop code in its own process or report verified cleanup
+  before client calls and their request-body activity finish.
 - A scenario is complete only when the request ends in an allowed way, all
   request-body activity has stopped, cleanup succeeds, and neither the scenario
   nor caller context was cancelled. Finishing before the timeout is not enough.
@@ -115,10 +116,30 @@ JSON reports store the same message beside its finding code.
 result. Validation rejects it when the recorded values require more specific
 findings.
 
-The source request must contain exactly one `Authorization` value equal to the
-suite's synthetic credential. At the redirect target, any `Authorization`
-value containing that complete synthetic marker counts as exposure, including
-a value with an added prefix or suffix. Unrelated values do not count.
+The `credential_exposed_at_target` wording is part of the v1 evidence format
+and is retained for compatibility. Capture detects the suite's opaque marker
+anywhere in the bounded request head, not only in an `Authorization` field.
+
+## HTTP/1 capture contract
+
+Both runtimes apply the same bounded wire grammar. A request line must contain
+an HTTP-token method, one space, a nonempty raw target made from visible ASCII
+bytes, one space, and `HTTP/D.D`, where each `D` is one digit. Only HTTP/1.1
+completes a capture. Header names must be HTTP tokens, folded or malformed
+lines are rejected, and field values cannot contain control bytes other than
+horizontal tab. A captured request has exactly one `Host`, at most one decimal
+`Content-Length`, or at most one `Transfer-Encoding` whose trimmed value is
+exactly `chunked` ignoring case; the two framing fields cannot appear together.
+Fixed-length and chunked bodies, including chunk trailers, must be complete and
+fit the suite's bounds.
+
+The source request must contain exactly one `Authorization` value equal to
+`Bearer ` followed by the suite's opaque synthetic marker. At the redirect
+target, that marker appearing anywhere in the bounded request-head bytes counts
+as exposure. This includes the request target, `Authorization`, `Cookie`, and
+custom fields, even if later parsing rejects the request. A marker appearing
+only in the body does not count. A malformed marker-bearing target can therefore
+be both unsafe and incomplete; unsafe takes precedence.
 
 ## Evidence meaning
 
@@ -151,5 +172,5 @@ reports can therefore have identical `junit.xml` and `summary.md` files.
 - [Artifact-manifest schema](../../schemas/v1/http-retry-check-artifact-manifest.schema.json)
 - [Corpus-manifest schema](../../schemas/v1/http-retry-check-conformance-corpus-manifest.schema.json)
 
-These v1 identities describe the evidence model in the `v0.1.0` source
+These v1 identities describe the evidence model in the `v0.1.1` source
 release.

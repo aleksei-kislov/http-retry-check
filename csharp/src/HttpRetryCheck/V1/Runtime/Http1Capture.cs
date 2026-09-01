@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,6 +19,8 @@ internal readonly record struct CaptureResult(
     SocketWireReader? Reader);
 
 internal readonly record struct ProbeResult(bool Trailing, bool Complete);
+
+internal readonly record struct HeaderReadResult(byte[] Bytes, bool Complete);
 
 internal sealed class SocketWireReader
 {
@@ -79,7 +79,7 @@ internal static class Http1Capture
         IPEndPoint expectedEndpoint,
         CancellationToken cancellationToken)
     {
-        var defaultResult = new CaptureResult(
+        var result = new CaptureResult(
             false,
             false,
             false,
@@ -92,19 +92,23 @@ internal static class Http1Capture
         byte[]? header = null;
         try
         {
-            header = await ReadHeaderAsync(socket, cancellationToken).ConfigureAwait(false);
-            if (header is null || !TryParseHeader(header, expectedEndpoint, out var parsed))
+            var headerRead = await ReadHeaderAsync(socket, cancellationToken).ConfigureAwait(false);
+            header = headerRead.Bytes;
+            result = result with
             {
-                return defaultResult;
+                CredentialExposed = header.AsSpan().IndexOf(RuntimeConstants.SyntheticMarkerBytes) >= 0,
+            };
+            if (!headerRead.Complete || !TryParseHeader(header, expectedEndpoint, out var parsed))
+            {
+                return result;
             }
 
-            var result = defaultResult with
+            result = result with
             {
                 HeadersObserved = true,
                 MethodConsistent = parsed.MethodConsistent,
                 DestinationConsistent = parsed.DestinationConsistent,
                 CredentialExact = parsed.CredentialExact,
-                CredentialExposed = parsed.CredentialExposed,
             };
             if (!parsed.ProtocolExact)
             {
@@ -129,7 +133,7 @@ internal static class Http1Capture
         }
         catch (Exception exception) when (RuntimeFailure.IsRecoverable(exception))
         {
-            return defaultResult;
+            return result;
         }
         finally
         {
@@ -177,15 +181,16 @@ internal static class Http1Capture
         }
     }
 
-    private static async Task<byte[]?> ReadHeaderAsync(
+    private static async Task<HeaderReadResult> ReadHeaderAsync(
         Socket socket,
         CancellationToken cancellationToken)
     {
         var header = new byte[RuntimeConstants.MaximumHeaderBytes];
         var current = new byte[1];
+        var length = 0;
         try
         {
-            for (var length = 0; length < header.Length; length++)
+            for (; length < header.Length; length++)
             {
                 var count = await socket.ReceiveAsync(
                     current.AsMemory(),
@@ -193,8 +198,7 @@ internal static class Http1Capture
                     cancellationToken).ConfigureAwait(false);
                 if (count != 1)
                 {
-                    Array.Clear(header);
-                    return null;
+                    return CopyHeader(header, length, complete: false);
                 }
 
                 header[length] = current[0];
@@ -204,25 +208,28 @@ internal static class Http1Capture
                     header[length - 1] == (byte)'\r' &&
                     header[length] == (byte)'\n')
                 {
-                    var result = new byte[length + 1];
-                    Buffer.BlockCopy(header, 0, result, 0, result.Length);
-                    Array.Clear(header);
-                    return result;
+                    return CopyHeader(header, length + 1, complete: true);
                 }
             }
 
-            Array.Clear(header);
-            return null;
+            return CopyHeader(header, header.Length, complete: false);
         }
-        catch
+        catch (Exception exception) when (RuntimeFailure.IsRecoverable(exception))
         {
-            Array.Clear(header);
-            throw;
+            return CopyHeader(header, length, complete: false);
         }
         finally
         {
+            Array.Clear(header);
             Array.Clear(current);
         }
+    }
+
+    private static HeaderReadResult CopyHeader(byte[] source, int length, bool complete)
+    {
+        var bytes = new byte[length];
+        Buffer.BlockCopy(source, 0, bytes, 0, length);
+        return new HeaderReadResult(bytes, complete);
     }
 
     private static bool TryParseHeader(
@@ -231,81 +238,84 @@ internal static class Http1Capture
         out ParsedRequest parsed)
     {
         parsed = default;
-        string value;
-        try
-        {
-            value = Encoding.Latin1.GetString(header);
-        }
-        catch (Exception exception) when (RuntimeFailure.IsRecoverable(exception))
+        ReadOnlySpan<byte> head = header;
+        if (head.Length < 4 ||
+            !head[^4..].SequenceEqual("\r\n\r\n"u8))
         {
             return false;
         }
 
-        var lines = value.Split("\r\n", StringSplitOptions.None);
-        if (lines.Length < 3 || lines[^1].Length != 0 || lines[^2].Length != 0)
+        var lineEnd = head.IndexOf("\r\n"u8);
+        if (lineEnd <= 0 ||
+            !TryParseRequestLine(
+                head[..lineEnd],
+                out var method,
+                out var target,
+                out var protocol))
         {
             return false;
         }
 
-        var requestLine = lines[0].Split(' ', StringSplitOptions.None);
-        if (requestLine.Length != 3 ||
-            !IsToken(requestLine[0]) ||
-            requestLine[1].Length == 0 ||
-            requestLine[1].Contains(' ', StringComparison.Ordinal) ||
-            !TryParseProtocol(requestLine[2]))
-        {
-            return false;
-        }
-
-        var hostValues = new List<string>(1);
-        var credentials = new List<string>(2);
-        long? contentLength = null;
+        var hostCount = 0;
+        var destinationConsistent = false;
+        var credentialCount = 0;
+        var credentialExact = false;
+        long contentLength = 0;
+        var contentLengthSeen = false;
         var chunked = false;
         var transferEncodingSeen = false;
-        for (var index = 1; index < lines.Length - 2; index++)
+        var offset = lineEnd + 2;
+        while (offset < head.Length - 2)
         {
-            var line = lines[index];
-            var colon = line.IndexOf(':', StringComparison.Ordinal);
-            if (colon <= 0 || !IsToken(line.AsSpan(0, colon)))
+            lineEnd = head[offset..].IndexOf("\r\n"u8);
+            if (lineEnd < 0)
+            {
+                return false;
+            }
+
+            var line = head.Slice(offset, lineEnd);
+            offset += lineEnd + 2;
+            if (line.IsEmpty)
+            {
+                return false;
+            }
+
+            var colon = line.IndexOf((byte)':');
+            if (colon <= 0 || !IsToken(line[..colon]))
             {
                 return false;
             }
 
             var name = line[..colon];
-            var fieldValue = TrimOptionalWhitespace(line.AsSpan(colon + 1));
+            var fieldValue = TrimOptionalWhitespace(line[(colon + 1)..]);
             if (!IsFieldValue(fieldValue))
             {
                 return false;
             }
 
-            var fieldText = fieldValue.ToString();
-            if (name.Equals("Host", StringComparison.OrdinalIgnoreCase))
+            if (EqualsAsciiIgnoreCase(name, "Host"u8))
             {
-                hostValues.Add(fieldText);
+                hostCount++;
+                destinationConsistent = HostMatches(fieldValue, expectedEndpoint.Port);
             }
-            else if (name.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
+            else if (EqualsAsciiIgnoreCase(name, "Authorization"u8))
             {
-                credentials.Add(fieldText);
+                credentialCount++;
+                credentialExact = fieldValue.SequenceEqual(RuntimeConstants.SyntheticCredentialBytes);
             }
-            else if (name.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+            else if (EqualsAsciiIgnoreCase(name, "Content-Length"u8))
             {
-                if (!long.TryParse(
-                        fieldText,
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out var parsedLength) ||
-                    parsedLength < 0 ||
-                    (contentLength.HasValue && contentLength.Value != parsedLength))
+                if (contentLengthSeen || !TryParseContentLength(fieldValue, out contentLength))
                 {
                     return false;
                 }
 
-                contentLength = parsedLength;
+                contentLengthSeen = true;
             }
-            else if (name.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+            else if (EqualsAsciiIgnoreCase(name, "Transfer-Encoding"u8))
             {
                 if (transferEncodingSeen ||
-                    !fieldText.Equals("chunked", StringComparison.OrdinalIgnoreCase))
+                    !EqualsAsciiIgnoreCase(fieldValue, "chunked"u8))
                 {
                     return false;
                 }
@@ -315,34 +325,121 @@ internal static class Http1Capture
             }
         }
 
-        if (hostValues.Count != 1 || (chunked && contentLength.HasValue))
+        if (offset != head.Length - 2 || hostCount != 1 || (chunked && contentLengthSeen))
         {
             return false;
         }
 
-        var expectedHost = string.Create(
-            CultureInfo.InvariantCulture,
-            $"127.0.0.1:{expectedEndpoint.Port}");
-        var credentialExact = credentials.Count == 1 &&
-            credentials[0].Equals(RuntimeConstants.SyntheticCredential, StringComparison.Ordinal);
-        var credentialExposed = false;
-        foreach (var credential in credentials)
+        parsed = new ParsedRequest(
+            method.SequenceEqual("POST"u8),
+            target.SequenceEqual("/case"u8) && destinationConsistent,
+            protocol.SequenceEqual("HTTP/1.1"u8),
+            credentialCount == 1 && credentialExact,
+            contentLength,
+            chunked);
+        return true;
+    }
+
+    private static bool TryParseRequestLine(
+        ReadOnlySpan<byte> line,
+        out ReadOnlySpan<byte> method,
+        out ReadOnlySpan<byte> target,
+        out ReadOnlySpan<byte> protocol)
+    {
+        method = default;
+        target = default;
+        protocol = default;
+        var firstSpace = line.IndexOf((byte)' ');
+        if (firstSpace <= 0)
         {
-            if (credential.Contains(RuntimeConstants.SyntheticCredential, StringComparison.Ordinal))
+            return false;
+        }
+
+        var secondSpace = line[(firstSpace + 1)..].IndexOf((byte)' ');
+        if (secondSpace < 0)
+        {
+            return false;
+        }
+
+        secondSpace += firstSpace + 1;
+        method = line[..firstSpace];
+        target = line[(firstSpace + 1)..secondSpace];
+        protocol = line[(secondSpace + 1)..];
+        return IsToken(method) && IsVisibleAscii(target) && IsProtocol(protocol);
+    }
+
+    private static bool IsVisibleAscii(ReadOnlySpan<byte> value)
+    {
+        if (value.IsEmpty)
+        {
+            return false;
+        }
+
+        foreach (var current in value)
+        {
+            if (current is < 0x21 or > 0x7e)
             {
-                credentialExposed = true;
+                return false;
             }
         }
 
-        parsed = new ParsedRequest(
-            requestLine[0].Equals("POST", StringComparison.Ordinal),
-            requestLine[1].Equals(RuntimeConstants.ControlledPath, StringComparison.Ordinal) &&
-                hostValues[0].Equals(expectedHost, StringComparison.Ordinal),
-            requestLine[2].Equals("HTTP/1.1", StringComparison.Ordinal),
-            credentialExact,
-            credentialExposed,
-            contentLength ?? 0,
-            chunked);
+        return true;
+    }
+
+    private static bool IsProtocol(ReadOnlySpan<byte> value)
+    {
+        return value.Length == 8 &&
+            value[..5].SequenceEqual("HTTP/"u8) &&
+            value[5] is >= (byte)'0' and <= (byte)'9' &&
+            value[6] == (byte)'.' &&
+            value[7] is >= (byte)'0' and <= (byte)'9';
+    }
+
+    private static bool TryParseContentLength(ReadOnlySpan<byte> value, out long parsed)
+    {
+        parsed = 0;
+        if (value.IsEmpty)
+        {
+            return false;
+        }
+
+        foreach (var current in value)
+        {
+            if (current is < (byte)'0' or > (byte)'9')
+            {
+                return false;
+            }
+
+            var digit = current - (byte)'0';
+            if (parsed > (long.MaxValue - digit) / 10)
+            {
+                return false;
+            }
+
+            parsed = (parsed * 10) + digit;
+        }
+
+        return true;
+    }
+
+    private static bool HostMatches(ReadOnlySpan<byte> value, int port)
+    {
+        var expected = string.Create(
+            CultureInfo.InvariantCulture,
+            $"127.0.0.1:{port}");
+        if (value.Length != expected.Length)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] != expected[index])
+            {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -352,26 +449,33 @@ internal static class Http1Capture
         CancellationToken cancellationToken)
     {
         var body = new BodyAccumulator();
-        if (parsed.Chunked)
+        try
         {
-            return await ReadChunkedBodyAsync(reader, body, cancellationToken).ConfigureAwait(false);
-        }
-
-        for (long index = 0; index < parsed.ContentLength; index++)
-        {
-            var value = await reader.ReadByteAsync(cancellationToken).ConfigureAwait(false);
-            if (value < 0)
+            if (parsed.Chunked)
             {
-                return body.Failed();
+                return await ReadChunkedBodyAsync(reader, body, cancellationToken).ConfigureAwait(false);
             }
 
-            if (!body.Add((byte)value))
+            for (long index = 0; index < parsed.ContentLength; index++)
             {
-                return body.Failed();
-            }
-        }
+                var value = await reader.ReadByteAsync(cancellationToken).ConfigureAwait(false);
+                if (value < 0)
+                {
+                    return body.Failed();
+                }
 
-        return body.Completed();
+                if (!body.Add((byte)value))
+                {
+                    return body.Failed();
+                }
+            }
+
+            return body.Completed();
+        }
+        catch (Exception exception) when (RuntimeFailure.IsRecoverable(exception))
+        {
+            return body.Failed();
+        }
     }
 
     private static async Task<BodyResult> ReadChunkedBodyAsync(
@@ -415,7 +519,7 @@ internal static class Http1Capture
     {
         ulong size = 0;
         var digits = 0;
-        var extension = false;
+        var state = ChunkSizeState.Size;
         while (true)
         {
             var value = await reader.ReadByteAsync(cancellationToken).ConfigureAwait(false);
@@ -426,37 +530,227 @@ internal static class Http1Capture
 
             if (value == '\r')
             {
+                if (!CanEndChunkSize(state, digits))
+                {
+                    return default;
+                }
+
                 var lineFeed = await reader.ReadByteAsync(cancellationToken).ConfigureAwait(false);
-                return lineFeed == '\n' && digits != 0
+                return lineFeed == '\n'
                     ? new ChunkSize(true, size)
                     : default;
             }
 
-            if (value == '\n' || value < 0x20 && value != '\t')
+            if (value == '\n')
             {
                 return default;
             }
 
-            if (extension)
+            switch (state)
             {
-                continue;
-            }
+                case ChunkSizeState.Size:
+                    var digit = HexValue(value);
+                    if (digit >= 0)
+                    {
+                        if (size > (ulong.MaxValue - (uint)digit) / 16)
+                        {
+                            return default;
+                        }
 
-            if (value == ';')
-            {
-                extension = true;
-                continue;
-            }
+                        size = (size * 16) + (uint)digit;
+                        digits++;
+                    }
+                    else if (digits == 0)
+                    {
+                        return default;
+                    }
+                    else if (value == ';')
+                    {
+                        state = ChunkSizeState.ExtensionNameStart;
+                    }
+                    else if (IsOptionalWhitespace(value))
+                    {
+                        state = ChunkSizeState.BeforeExtension;
+                    }
+                    else
+                    {
+                        return default;
+                    }
 
-            var digit = HexValue(value);
-            if (digit < 0 || size > (ulong.MaxValue - (uint)digit) / 16)
-            {
-                return default;
-            }
+                    break;
+                case ChunkSizeState.BeforeExtension:
+                    if (value == ';')
+                    {
+                        state = ChunkSizeState.ExtensionNameStart;
+                    }
+                    else if (!IsOptionalWhitespace(value))
+                    {
+                        return default;
+                    }
 
-            size = (size * 16) + (uint)digit;
-            digits++;
+                    break;
+                case ChunkSizeState.ExtensionNameStart:
+                    if (IsTokenCharacter(value))
+                    {
+                        state = ChunkSizeState.ExtensionName;
+                    }
+                    else if (!IsOptionalWhitespace(value))
+                    {
+                        return default;
+                    }
+
+                    break;
+                case ChunkSizeState.ExtensionName:
+                    if (IsTokenCharacter(value))
+                    {
+                        break;
+                    }
+
+                    if (value == '=')
+                    {
+                        state = ChunkSizeState.ExtensionValueStart;
+                    }
+                    else if (value == ';')
+                    {
+                        state = ChunkSizeState.ExtensionNameStart;
+                    }
+                    else if (IsOptionalWhitespace(value))
+                    {
+                        state = ChunkSizeState.AfterExtensionName;
+                    }
+                    else
+                    {
+                        return default;
+                    }
+
+                    break;
+                case ChunkSizeState.AfterExtensionName:
+                    if (value == '=')
+                    {
+                        state = ChunkSizeState.ExtensionValueStart;
+                    }
+                    else if (value == ';')
+                    {
+                        state = ChunkSizeState.ExtensionNameStart;
+                    }
+                    else if (!IsOptionalWhitespace(value))
+                    {
+                        return default;
+                    }
+
+                    break;
+                case ChunkSizeState.ExtensionValueStart:
+                    if (value == '"')
+                    {
+                        state = ChunkSizeState.QuotedExtensionValue;
+                    }
+                    else if (IsTokenCharacter(value))
+                    {
+                        state = ChunkSizeState.TokenExtensionValue;
+                    }
+                    else if (!IsOptionalWhitespace(value))
+                    {
+                        return default;
+                    }
+
+                    break;
+                case ChunkSizeState.TokenExtensionValue:
+                    if (IsTokenCharacter(value))
+                    {
+                        break;
+                    }
+
+                    if (value == ';')
+                    {
+                        state = ChunkSizeState.ExtensionNameStart;
+                    }
+                    else if (IsOptionalWhitespace(value))
+                    {
+                        state = ChunkSizeState.AfterExtensionValue;
+                    }
+                    else
+                    {
+                        return default;
+                    }
+
+                    break;
+                case ChunkSizeState.QuotedExtensionValue:
+                    if (value == '"')
+                    {
+                        state = ChunkSizeState.QuotedExtensionComplete;
+                    }
+                    else if (value == '\\')
+                    {
+                        state = ChunkSizeState.QuotedExtensionPair;
+                    }
+                    else if (!IsQuotedText(value))
+                    {
+                        return default;
+                    }
+
+                    break;
+                case ChunkSizeState.QuotedExtensionPair:
+                    if (!IsQuotedPairValue(value))
+                    {
+                        return default;
+                    }
+
+                    state = ChunkSizeState.QuotedExtensionValue;
+                    break;
+                case ChunkSizeState.QuotedExtensionComplete:
+                    if (value == ';')
+                    {
+                        state = ChunkSizeState.ExtensionNameStart;
+                    }
+                    else if (IsOptionalWhitespace(value))
+                    {
+                        state = ChunkSizeState.AfterExtensionValue;
+                    }
+                    else
+                    {
+                        return default;
+                    }
+
+                    break;
+                case ChunkSizeState.AfterExtensionValue:
+                    if (value == ';')
+                    {
+                        state = ChunkSizeState.ExtensionNameStart;
+                    }
+                    else if (!IsOptionalWhitespace(value))
+                    {
+                        return default;
+                    }
+
+                    break;
+                default:
+                    return default;
+            }
         }
+    }
+
+    private static bool CanEndChunkSize(ChunkSizeState state, int digits)
+    {
+        return digits != 0 &&
+            state is ChunkSizeState.Size or
+                ChunkSizeState.ExtensionName or
+                ChunkSizeState.TokenExtensionValue or
+                ChunkSizeState.QuotedExtensionComplete;
+    }
+
+    private static bool IsOptionalWhitespace(int value)
+    {
+        return value is ' ' or '\t';
+    }
+
+    private static bool IsQuotedText(int value)
+    {
+        return value is '\t' or ' ' or 0x21 or >= 0x23 and <= 0x5b or >= 0x5d and <= 0x7e or >= 0x80;
+    }
+
+    private static bool IsQuotedPairValue(int value)
+    {
+        return value is '\t' or ' ' or >= 0x21 and <= 0x7e or >= 0x80;
     }
 
     private static async Task<bool> ReadTrailersAsync(
@@ -498,7 +792,7 @@ internal static class Http1Capture
                 continue;
             }
 
-            if (value == '\n' || value < 0x20 && value != '\t')
+            if (value == '\n' || value == 0x7f || value < 0x20 && value != '\t')
             {
                 return false;
             }
@@ -556,51 +850,16 @@ internal static class Http1Capture
         return -1;
     }
 
-    private static bool TryParseProtocol(string value)
-    {
-        if (!value.StartsWith("HTTP/", StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        var version = value.AsSpan(5);
-        var dot = version.IndexOf('.');
-        if (dot <= 0 || dot == version.Length - 1)
-        {
-            return false;
-        }
-
-        return AllDigits(version[..dot]) && AllDigits(version[(dot + 1)..]);
-    }
-
-    private static bool AllDigits(ReadOnlySpan<char> value)
-    {
-        foreach (var character in value)
-        {
-            if (character is < '0' or > '9')
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool IsToken(string value)
-    {
-        return IsToken(value.AsSpan());
-    }
-
-    private static bool IsToken(ReadOnlySpan<char> value)
+    private static bool IsToken(ReadOnlySpan<byte> value)
     {
         if (value.IsEmpty)
         {
             return false;
         }
 
-        foreach (var character in value)
+        foreach (var current in value)
         {
-            if (!IsTokenCharacter(character))
+            if (!IsTokenCharacter(current))
             {
                 return false;
             }
@@ -609,14 +868,14 @@ internal static class Http1Capture
         return true;
     }
 
-    private static bool IsTokenCharacter(char character)
+    private static bool IsTokenCharacter(int character)
     {
-        return char.IsAsciiLetterOrDigit(character) ||
+        return character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' ||
             character is '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+' or '-' or '.' or '^' or
                 '_' or '`' or '|' or '~';
     }
 
-    private static bool IsFieldValue(ReadOnlySpan<char> value)
+    private static bool IsFieldValue(ReadOnlySpan<byte> value)
     {
         foreach (var character in value)
         {
@@ -634,14 +893,14 @@ internal static class Http1Capture
         return true;
     }
 
-    private static ReadOnlySpan<char> TrimOptionalWhitespace(ReadOnlySpan<char> value)
+    private static ReadOnlySpan<byte> TrimOptionalWhitespace(ReadOnlySpan<byte> value)
     {
-        while (!value.IsEmpty && value[0] is ' ' or '\t')
+        while (!value.IsEmpty && (value[0] == (byte)' ' || value[0] == (byte)'\t'))
         {
             value = value[1..];
         }
 
-        while (!value.IsEmpty && value[^1] is ' ' or '\t')
+        while (!value.IsEmpty && (value[^1] == (byte)' ' || value[^1] == (byte)'\t'))
         {
             value = value[..^1];
         }
@@ -649,18 +908,62 @@ internal static class Http1Capture
         return value;
     }
 
+    private static bool EqualsAsciiIgnoreCase(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
+    {
+        if (left.Length != right.Length)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < left.Length; index++)
+        {
+            var current = left[index];
+            if (current is >= (byte)'A' and <= (byte)'Z')
+            {
+                current += (byte)('a' - 'A');
+            }
+
+            var expected = right[index];
+            if (expected is >= (byte)'A' and <= (byte)'Z')
+            {
+                expected += (byte)('a' - 'A');
+            }
+
+            if (current != expected)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private readonly record struct ParsedRequest(
         bool MethodConsistent,
         bool DestinationConsistent,
         bool ProtocolExact,
         bool CredentialExact,
-        bool CredentialExposed,
         long ContentLength,
         bool Chunked);
 
     private readonly record struct BodyResult(bool Complete, bool Consistent);
 
     private readonly record struct ChunkSize(bool Valid, ulong Size);
+
+    private enum ChunkSizeState
+    {
+        Size,
+        BeforeExtension,
+        ExtensionNameStart,
+        ExtensionName,
+        AfterExtensionName,
+        ExtensionValueStart,
+        TokenExtensionValue,
+        QuotedExtensionValue,
+        QuotedExtensionPair,
+        QuotedExtensionComplete,
+        AfterExtensionValue,
+    }
 
     private sealed class BodyAccumulator
     {

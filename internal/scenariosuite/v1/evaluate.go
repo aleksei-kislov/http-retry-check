@@ -192,13 +192,6 @@ func validObservation(scenario ScenarioID, observation Observation) bool {
 			(completeResponseScenario && observation.ResponseAttemptCount == 0)) {
 		return false
 	}
-	if !observation.BodyConsistent &&
-		((completeEffectScenario && observation.EffectCount == 0) ||
-			(completeResponseScenario && observation.ResponseAttemptCount == 0) ||
-			(scenario == ScenarioDisconnectBeforeAcceptance &&
-				observation.Credential != CredentialSourceOnly && observation.Credential != CredentialMissing)) {
-		return false
-	}
 	if observation.Credential == CredentialNotObserved {
 		switch scenario {
 		case ScenarioAcceptThenDisconnect, ScenarioChangedBodyRetry, ScenarioDelayedResponse:
