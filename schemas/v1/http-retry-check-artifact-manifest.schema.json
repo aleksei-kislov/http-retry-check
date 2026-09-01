@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:http-retry-check:schema:artifact-manifest:v1",
+  "title": "HTTP Retry Check Artifact Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_schema_version",
+    "claim_ceiling",
+    "digest_domain",
+    "aggregate_sha256",
+    "files"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "http_retry_check.artifact_manifest.v1"
+    },
+    "report_schema_version": {
+      "const": "http_retry_check.report.v1"
+    },
+    "claim_ceiling": {
+      "const": "This report covers only six local scenarios run in the same process as the client. It does not prove compatibility, production safety, security, isolation, provenance, or behavior at other destinations."
+    },
+    "digest_domain": {
+      "const": "http_retry_check.artifact_set.v1"
+    },
+    "aggregate_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/descriptor"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "report.json"
+                },
+                "media_type": {
+                  "const": "application/json"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/descriptor"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "junit.xml"
+                },
+                "media_type": {
+                  "const": "application/xml"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/descriptor"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "summary.md"
+                },
+                "media_type": {
+                  "const": "text/markdown; charset=utf-8"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "media_type",
+        "size_bytes",
+        "sha256"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 262144
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

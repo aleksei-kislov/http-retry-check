@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="HTTP Retry Check scenario suite" tests="6" failures="1" errors="1">
+  <properties>
+    <property name="schema_version" value="http_retry_check.report.v1"></property>
+    <property name="suite_identity" value="http_retry_check.scenario_suite.v1"></property>
+    <property name="explanation_identity" value="http_retry_check.scenario_explanations.v1"></property>
+    <property name="claim_ceiling" value="This report covers only six local scenarios run in the same process as the client. It does not prove compatibility, production safety, security, isolation, provenance, or behavior at other destinations."></property>
+    <property name="outcome" value="fail"></property>
+  </properties>
+  <testcase name="Tests whether the client retries after the origin accepts a request and disconnects before responding." classname="http_retry_check.report.v1"></testcase>
+  <testcase name="Tests whether the client retries after the connection ends before request acceptance can be confirmed." classname="http_retry_check.report.v1"></testcase>
+  <testcase name="Tests whether a retry changes the body after the origin accepts a request and disconnects." classname="http_retry_check.report.v1"></testcase>
+  <testcase name="Tests redirect behavior and whether the synthetic credential reaches a different controlled origin." classname="http_retry_check.report.v1">
+    <failure message="Unsafe HTTP behavior was observed.">The synthetic Authorization value reached the redirect target.</failure>
+  </testcase>
+  <testcase name="Tests how many attempts the client makes after a controlled service-unavailable response." classname="http_retry_check.report.v1"></testcase>
+  <testcase name="Tests whether the client retries while an accepted request is waiting for a delayed response." classname="http_retry_check.report.v1">
+    <error message="The result is inconclusive.">No request reached the test server.&#xA;The test did not capture a complete scenario result.&#xA;The test could not verify that all scenario resources were cleaned up.</error>
+  </testcase>
+</testsuite>

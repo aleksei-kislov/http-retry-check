@@ -1,0 +1,170 @@
+{
+  "schema_version": "http_retry_check.conformance_invalid.v1",
+  "category": "authority",
+  "cases": [
+    {
+      "id": "authority_nil_findings",
+      "expected": "invalid_result",
+      "representability": [
+        "go"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "native_nil_collection",
+      "target": "/scenarios/0/findings",
+      "coverage": [
+        "authority.go.nil"
+      ]
+    },
+    {
+      "id": "authority_value_aliasing",
+      "expected": "detached",
+      "representability": [
+        "go"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "native_alias_probe",
+      "target": "/scenarios",
+      "coverage": [
+        "authority.go.aliasing"
+      ]
+    },
+    {
+      "id": "authority_constructor_aliasing",
+      "expected": "detached",
+      "representability": [
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "native_alias_probe",
+      "target": "/scenarios",
+      "coverage": [
+        "authority.csharp.aliasing"
+      ]
+    },
+    {
+      "id": "authority_stable_api_surface",
+      "expected": "exact_surface",
+      "representability": [
+        "go"
+      ],
+      "operation": "source_surface",
+      "target": "pkg/httpcheck/v1",
+      "coverage": [
+        "authority.go.surface"
+      ]
+    },
+    {
+      "id": "authority_native_api_surface",
+      "expected": "exact_surface",
+      "representability": [
+        "csharp"
+      ],
+      "operation": "source_surface",
+      "target": "HttpRetryCheck.V1",
+      "coverage": [
+        "authority.csharp.surface"
+      ]
+    },
+    {
+      "id": "authority_no_cross_binding_import",
+      "expected": "forbidden_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "source_import",
+      "target": "other_binding",
+      "coverage": [
+        "authority.cross_binding"
+      ]
+    },
+    {
+      "id": "authority_cli_no_runtime_import",
+      "expected": "forbidden_absent",
+      "representability": [
+        "cli"
+      ],
+      "operation": "source_import",
+      "target": "native_http_runtime",
+      "coverage": [
+        "authority.cli.runtime"
+      ]
+    },
+    {
+      "id": "authority_cli_no_execution",
+      "expected": "forbidden_absent",
+      "representability": [
+        "cli"
+      ],
+      "operation": "source_capability",
+      "target": "process_plugin_rpc_package_test_network",
+      "coverage": [
+        "authority.cli.execution"
+      ]
+    },
+    {
+      "id": "authority_runtime_literal_loopback",
+      "expected": "native_control",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "native_runtime",
+      "target": "literal_127_0_0_1",
+      "coverage": [
+        "authority.runtime.loopback"
+      ]
+    },
+    {
+      "id": "authority_runtime_no_ambient_proxy",
+      "expected": "native_control",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "native_runtime",
+      "target": "proxy_free_http1",
+      "coverage": [
+        "authority.runtime.proxy"
+      ]
+    },
+    {
+      "id": "authority_runtime_same_instance_order",
+      "expected": "native_control",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "native_runtime",
+      "target": "same_instance_canonical_order",
+      "coverage": [
+        "authority.runtime.order"
+      ]
+    },
+    {
+      "id": "authority_runtime_concurrent_independence",
+      "expected": "native_control",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "native_runtime",
+      "target": "concurrent_independence",
+      "coverage": [
+        "authority.runtime.concurrency"
+      ]
+    },
+    {
+      "id": "authority_cli_no_follow_persistence",
+      "expected": "native_control",
+      "representability": [
+        "cli"
+      ],
+      "operation": "filesystem_boundary",
+      "target": "no_follow_atomic_no_replace",
+      "coverage": [
+        "authority.cli.persistence"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "schema_version": "http_retry_check.conformance_results.v1",
+  "category": "inconclusive",
+  "cases": [
+    {
+      "id": "result_inconclusive_accept_then_disconnect",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "inconclusive",
+      "rows": [
+        "unrun_accept_then_disconnect_cleanup_succeeded",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "positive_redirect_followed",
+        "positive_retry_limit_two",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.inconclusive.accept_then_disconnect",
+        "aggregate.inconclusive"
+      ]
+    },
+    {
+      "id": "result_inconclusive_disconnect_before_acceptance",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "inconclusive",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "unrun_disconnect_before_acceptance_cleanup_succeeded",
+        "positive_changed_body_retry",
+        "positive_redirect_followed",
+        "positive_retry_limit_two",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.inconclusive.disconnect_before_acceptance",
+        "aggregate.inconclusive"
+      ]
+    },
+    {
+      "id": "result_inconclusive_changed_body_retry",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "inconclusive",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "unrun_changed_body_retry_cleanup_succeeded",
+        "positive_redirect_followed",
+        "positive_retry_limit_two",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.inconclusive.changed_body_retry",
+        "aggregate.inconclusive"
+      ]
+    },
+    {
+      "id": "result_inconclusive_cross_origin_redirect_credentials",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "inconclusive",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "unrun_cross_origin_redirect_credentials_cleanup_succeeded",
+        "positive_retry_limit_two",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.inconclusive.cross_origin_redirect_credentials",
+        "aggregate.inconclusive"
+      ]
+    },
+    {
+      "id": "result_inconclusive_retry_limit",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "inconclusive",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "positive_redirect_followed",
+        "unrun_retry_limit_cleanup_succeeded",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.inconclusive.retry_limit",
+        "aggregate.inconclusive"
+      ]
+    },
+    {
+      "id": "result_inconclusive_delayed_response",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "inconclusive",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "positive_redirect_followed",
+        "positive_retry_limit_two",
+        "unrun_delayed_response_cleanup_succeeded"
+      ],
+      "coverage": [
+        "result.inconclusive.delayed_response",
+        "aggregate.inconclusive"
+      ]
+    }
+  ]
+}

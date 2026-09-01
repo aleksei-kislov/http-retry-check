@@ -1,0 +1,230 @@
+{
+  "schema_version": "http_retry_check.conformance_invalid.v1",
+  "category": "sanitation",
+  "marker": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+  "cases": [
+    {
+      "id": "sanitation_callback_error_value",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "callback_error_value",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.callback.error_value"
+      ]
+    },
+    {
+      "id": "sanitation_callback_error_type",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "callback_error_type",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.callback.error_type"
+      ]
+    },
+    {
+      "id": "sanitation_panic_value",
+      "expected": "marker_absent",
+      "representability": [
+        "go"
+      ],
+      "operation": "inject_marker",
+      "target": "panic_value",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.panic"
+      ]
+    },
+    {
+      "id": "sanitation_response_reason",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "response_reason",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.response.reason"
+      ]
+    },
+    {
+      "id": "sanitation_response_header",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "response_header",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.response.header"
+      ]
+    },
+    {
+      "id": "sanitation_response_content",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "response_content",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.response.content"
+      ]
+    },
+    {
+      "id": "sanitation_request_url",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "request_url",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.request.url"
+      ]
+    },
+    {
+      "id": "sanitation_request_header",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "request_header",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.request.header"
+      ]
+    },
+    {
+      "id": "sanitation_request_body",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "request_body",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.request.body"
+      ]
+    },
+    {
+      "id": "sanitation_replay_behavior",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "replay_behavior",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.request.replay"
+      ]
+    },
+    {
+      "id": "sanitation_sender_type",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "client_type",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.client.type"
+      ]
+    },
+    {
+      "id": "sanitation_sender_formatter",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "operation": "inject_marker",
+      "target": "client_formatter",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.client.formatter"
+      ]
+    },
+    {
+      "id": "sanitation_filesystem_location",
+      "expected": "marker_absent",
+      "representability": [
+        "cli"
+      ],
+      "operation": "inject_marker",
+      "target": "filesystem_path",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.filesystem.path"
+      ]
+    },
+    {
+      "id": "sanitation_io_error",
+      "expected": "marker_absent",
+      "representability": [
+        "cli"
+      ],
+      "operation": "inject_marker",
+      "target": "io_error",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.filesystem.error"
+      ]
+    },
+    {
+      "id": "sanitation_environment_proxy",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp",
+        "cli"
+      ],
+      "operation": "inject_marker",
+      "target": "environment_proxy",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.environment.proxy"
+      ]
+    },
+    {
+      "id": "sanitation_environment_credential",
+      "expected": "marker_absent",
+      "representability": [
+        "go",
+        "csharp",
+        "cli"
+      ],
+      "operation": "inject_marker",
+      "target": "environment_credential",
+      "operand": "HTTP_RETRY_CHECK_CORPUS_MARKER_7Q4VX9",
+      "coverage": [
+        "sanitation.environment.credential"
+      ]
+    }
+  ]
+}

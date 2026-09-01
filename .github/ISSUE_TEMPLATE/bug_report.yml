@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a reproducible problem in HTTP Retry Check.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem. Do not include secrets or suspected vulnerabilities here; use GitHub Private Vulnerability Reporting as described in SECURITY.md.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Go API or runtime
+        - C# API or runtime
+        - CLI
+        - Evidence or schema
+        - Documentation
+        - Development tooling
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Version or revision
+      description: Provide the release tag or commit hash you tested.
+      placeholder: v0.1.0 or a commit hash
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include operating system and Go or .NET SDK version.
+      placeholder: Ubuntu 24.04, Go 1.26.6
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide the smallest code example or commands that reproduce the problem. Remove private data first.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behaviour
+      description: Include the output and assessment where relevant. Remove private data first.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any useful retry settings or evidence details. Remove private data first.

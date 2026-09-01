@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>HttpRetryCheck.Tests</AssemblyName>
+    <RootNamespace>HttpRetryCheck.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/HttpRetryCheck/HttpRetryCheck.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../../internal/httpcheck/v1/scaffold/templates/csharp/HttpRetryTests.cs"
+             Link="Scaffold/HttpRetryTests.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="MSTest.TestAdapter" PrivateAssets="all" />
+    <PackageReference Include="MSTest.TestFramework" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,172 @@
+{
+  "schema_version": "http_retry_check.report.v1",
+  "suite_identity": "http_retry_check.scenario_suite.v1",
+  "explanation_identity": "http_retry_check.scenario_explanations.v1",
+  "claim_ceiling": "This report covers only six local scenarios run in the same process as the client. It does not prove compatibility, production safety, security, isolation, provenance, or behavior at other destinations.",
+  "assessment": "unsafe_behavior_observed",
+  "assessment_text": "Unsafe HTTP behavior was observed.",
+  "outcome": "fail",
+  "summary": {
+    "scenarios": 6,
+    "passed": 5,
+    "failed": 1,
+    "inconclusive": 0
+  },
+  "scenarios": [
+    {
+      "scenario": "accept_then_disconnect",
+      "scenario_text": "Tests whether the client retries after the origin accepts a request and disconnects before responding.",
+      "assessment": "no_unsafe_behavior_observed",
+      "assessment_text": "No unsafe HTTP behavior was observed.",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "effect_count": 1,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "findings": []
+    },
+    {
+      "scenario": "disconnect_before_acceptance",
+      "scenario_text": "Tests whether the client retries after the connection ends before request acceptance can be confirmed.",
+      "assessment": "no_unsafe_behavior_observed",
+      "assessment_text": "No unsafe HTTP behavior was observed.",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "findings": []
+    },
+    {
+      "scenario": "changed_body_retry",
+      "scenario_text": "Tests whether a retry changes the body after the origin accepts a request and disconnects.",
+      "assessment": "no_unsafe_behavior_observed",
+      "assessment_text": "No unsafe HTTP behavior was observed.",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "effect_count": 1,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "findings": []
+    },
+    {
+      "scenario": "cross_origin_redirect_credentials",
+      "scenario_text": "Tests redirect behavior and whether the synthetic credential reaches a different controlled origin.",
+      "assessment": "unsafe_behavior_observed",
+      "assessment_text": "Unsafe HTTP behavior was observed.",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 2,
+        "effect_count": 1,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 2,
+        "response_complete_count": 2,
+        "first_response_complete": true,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "exposed_at_target",
+        "cleanup": "succeeded"
+      },
+      "findings": [
+        {
+          "code": "credential_exposed_at_target",
+          "text": "The synthetic Authorization value reached the redirect target."
+        }
+      ]
+    },
+    {
+      "scenario": "retry_limit",
+      "scenario_text": "Tests how many attempts the client makes after a controlled service-unavailable response.",
+      "assessment": "no_unsafe_behavior_observed",
+      "assessment_text": "No unsafe HTTP behavior was observed.",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 2,
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 2,
+        "response_complete_count": 2,
+        "first_response_complete": true,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "findings": []
+    },
+    {
+      "scenario": "delayed_response",
+      "scenario_text": "Tests whether the client retries while an accepted request is waiting for a delayed response.",
+      "assessment": "no_unsafe_behavior_observed",
+      "assessment_text": "No unsafe HTTP behavior was observed.",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "effect_count": 1,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 1,
+        "response_complete_count": 1,
+        "first_response_complete": true,
+        "delay_complete_count": 1,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "findings": []
+    }
+  ]
+}

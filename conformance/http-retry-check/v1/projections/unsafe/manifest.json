@@ -1,0 +1,27 @@
+{
+  "schema_version": "http_retry_check.artifact_manifest.v1",
+  "report_schema_version": "http_retry_check.report.v1",
+  "claim_ceiling": "This report covers only six local scenarios run in the same process as the client. It does not prove compatibility, production safety, security, isolation, provenance, or behavior at other destinations.",
+  "digest_domain": "http_retry_check.artifact_set.v1",
+  "aggregate_sha256": "bd50bc5323d6a5560b0fb9e7f4941675dff72630aa0beedd8eed98888823414f",
+  "files": [
+    {
+      "name": "report.json",
+      "media_type": "application/json",
+      "size_bytes": 6320,
+      "sha256": "98cce68ee7aa81d89923195f2c8076b7d489fbf2c6c7ccea6636b9ceadec8c4b"
+    },
+    {
+      "name": "junit.xml",
+      "media_type": "application/xml",
+      "size_bytes": 1893,
+      "sha256": "62f0b044ba0449df2d883a0b543103d7b203cf791e115cce84a2d33af885240c"
+    },
+    {
+      "name": "summary.md",
+      "media_type": "text/markdown; charset=utf-8",
+      "size_bytes": 692,
+      "sha256": "1f5f2c48d0b0fedcedcbfe7ec04d27a4fb11b986aeecad07d6f5611d3f9d1d7c"
+    }
+  ]
+}

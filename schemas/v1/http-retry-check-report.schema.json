@@ -1,0 +1,744 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:http-retry-check:schema:report:v1",
+  "title": "HTTP Retry Check Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite_identity",
+    "explanation_identity",
+    "claim_ceiling",
+    "assessment",
+    "assessment_text",
+    "outcome",
+    "summary",
+    "scenarios"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "http_retry_check.report.v1"
+    },
+    "suite_identity": {
+      "const": "http_retry_check.scenario_suite.v1"
+    },
+    "explanation_identity": {
+      "const": "http_retry_check.scenario_explanations.v1"
+    },
+    "claim_ceiling": {
+      "const": "This report covers only six local scenarios run in the same process as the client. It does not prove compatibility, production safety, security, isolation, provenance, or behavior at other destinations."
+    },
+    "assessment": {
+      "$ref": "#/$defs/assessment"
+    },
+    "assessment_text": {
+      "type": "string"
+    },
+    "outcome": {
+      "$ref": "#/$defs/outcome"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/accept_then_disconnect"
+        },
+        {
+          "$ref": "#/$defs/disconnect_before_acceptance"
+        },
+        {
+          "$ref": "#/$defs/changed_body_retry"
+        },
+        {
+          "$ref": "#/$defs/cross_origin_redirect_credentials"
+        },
+        {
+          "$ref": "#/$defs/retry_limit"
+        },
+        {
+          "$ref": "#/$defs/delayed_response"
+        }
+      ],
+      "items": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "assessment": {
+            "const": "no_unsafe_behavior_observed"
+          }
+        },
+        "required": [
+          "assessment"
+        ]
+      },
+      "then": {
+        "properties": {
+          "assessment_text": {
+            "const": "No unsafe HTTP behavior was observed."
+          },
+          "outcome": {
+            "const": "pass"
+          },
+          "summary": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/summary"
+              },
+              {
+                "properties": {
+                  "passed": {
+                    "const": 6
+                  },
+                  "failed": {
+                    "const": 0
+                  },
+                  "inconclusive": {
+                    "const": 0
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "assessment": {
+            "const": "unsafe_behavior_observed"
+          }
+        },
+        "required": [
+          "assessment"
+        ]
+      },
+      "then": {
+        "properties": {
+          "assessment_text": {
+            "const": "Unsafe HTTP behavior was observed."
+          },
+          "outcome": {
+            "const": "fail"
+          },
+          "summary": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/summary"
+              },
+              {
+                "properties": {
+                  "failed": {
+                    "minimum": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "assessment": {
+            "const": "inconclusive"
+          }
+        },
+        "required": [
+          "assessment"
+        ]
+      },
+      "then": {
+        "properties": {
+          "assessment_text": {
+            "const": "The result is inconclusive."
+          },
+          "outcome": {
+            "const": "inconclusive"
+          },
+          "summary": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/summary"
+              },
+              {
+                "properties": {
+                  "failed": {
+                    "const": 0
+                  },
+                  "inconclusive": {
+                    "minimum": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "assessment": {
+      "type": "string",
+      "enum": [
+        "no_unsafe_behavior_observed",
+        "unsafe_behavior_observed",
+        "inconclusive"
+      ]
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "inconclusive"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenarios",
+        "passed",
+        "failed",
+        "inconclusive"
+      ],
+      "properties": {
+        "scenarios": {
+          "const": 6
+        },
+        "passed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "inconclusive": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capture_complete",
+        "attempt_count",
+        "effect_count",
+        "overlap_count",
+        "retry_after_effect_count",
+        "retry_after_unconfirmed_count",
+        "retry_before_response_count",
+        "response_attempt_count",
+        "response_complete_count",
+        "first_response_complete",
+        "delay_complete_count",
+        "method_consistent",
+        "destination_consistent",
+        "body_consistent",
+        "credential",
+        "cleanup"
+      ],
+      "properties": {
+        "capture_complete": {
+          "type": "boolean"
+        },
+        "attempt_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "effect_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "overlap_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "retry_after_effect_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "retry_after_unconfirmed_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "retry_before_response_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "response_attempt_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "response_complete_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "first_response_complete": {
+          "type": "boolean"
+        },
+        "delay_complete_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "method_consistent": {
+          "type": "boolean"
+        },
+        "destination_consistent": {
+          "type": "boolean"
+        },
+        "body_consistent": {
+          "type": "boolean"
+        },
+        "credential": {
+          "type": "string",
+          "enum": [
+            "not_observed",
+            "source_only",
+            "absent_at_target",
+            "exposed_at_target",
+            "missing"
+          ]
+        },
+        "cleanup": {
+          "type": "string",
+          "enum": [
+            "succeeded",
+            "failed"
+          ]
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "text"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "code": {
+              "const": "attempt_not_observed"
+            },
+            "text": {
+              "const": "No request reached the test server."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "capture_incomplete"
+            },
+            "text": {
+              "const": "The test did not capture a complete scenario result."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "response_incomplete"
+            },
+            "text": {
+              "const": "The required response attempt or completion was not observed."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "delay_incomplete"
+            },
+            "text": {
+              "const": "The test server did not finish its delayed-response phase."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "attempt_limit_exceeded"
+            },
+            "text": {
+              "const": "The client made more than two attempts."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "retry_before_response"
+            },
+            "text": {
+              "const": "The client retried while an earlier response was still pending."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "retry_after_accepted_request"
+            },
+            "text": {
+              "const": "The client retried after the server accepted the request."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "retry_after_unconfirmed_acceptance"
+            },
+            "text": {
+              "const": "The client retried without knowing whether the server accepted the earlier request."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "method_changed"
+            },
+            "text": {
+              "const": "The request method did not match the expected method."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "destination_changed"
+            },
+            "text": {
+              "const": "The request was sent to an unexpected destination."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "body_changed"
+            },
+            "text": {
+              "const": "A request body differed from the original."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "credential_not_observed"
+            },
+            "text": {
+              "const": "The test could not determine where the synthetic credential was sent."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "credential_missing"
+            },
+            "text": {
+              "const": "The original request did not contain exactly one expected synthetic Authorization value."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "credential_exposed_at_target"
+            },
+            "text": {
+              "const": "The synthetic Authorization value reached the redirect target."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "effect_not_observed"
+            },
+            "text": {
+              "const": "The test did not observe the expected server-side effect."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "effect_limit_exceeded"
+            },
+            "text": {
+              "const": "The test server recorded more effects than this scenario allows."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "cleanup_unverified"
+            },
+            "text": {
+              "const": "The test could not verify that all scenario resources were cleaned up."
+            }
+          }
+        },
+        {
+          "properties": {
+            "code": {
+              "const": "scenario_incomplete"
+            },
+            "text": {
+              "const": "The scenario did not collect enough evidence to pass."
+            }
+          }
+        }
+      ]
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario",
+        "scenario_text",
+        "assessment",
+        "assessment_text",
+        "observation",
+        "findings"
+      ],
+      "properties": {
+        "scenario": {
+          "type": "string"
+        },
+        "scenario_text": {
+          "type": "string"
+        },
+        "assessment": {
+          "$ref": "#/$defs/assessment"
+        },
+        "assessment_text": {
+          "type": "string"
+        },
+        "observation": {
+          "$ref": "#/$defs/observation"
+        },
+        "findings": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 18,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "assessment": {
+                "const": "no_unsafe_behavior_observed"
+              }
+            },
+            "required": [
+              "assessment"
+            ]
+          },
+          "then": {
+            "properties": {
+              "assessment_text": {
+                "const": "No unsafe HTTP behavior was observed."
+              },
+              "findings": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "assessment": {
+                "const": "unsafe_behavior_observed"
+              }
+            },
+            "required": [
+              "assessment"
+            ]
+          },
+          "then": {
+            "properties": {
+              "assessment_text": {
+                "const": "Unsafe HTTP behavior was observed."
+              },
+              "findings": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "assessment": {
+                "const": "inconclusive"
+              }
+            },
+            "required": [
+              "assessment"
+            ]
+          },
+          "then": {
+            "properties": {
+              "assessment_text": {
+                "const": "The result is inconclusive."
+              },
+              "findings": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "accept_then_disconnect": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scenario"
+        },
+        {
+          "properties": {
+            "scenario": {
+              "const": "accept_then_disconnect"
+            },
+            "scenario_text": {
+              "const": "Tests whether the client retries after the origin accepts a request and disconnects before responding."
+            }
+          }
+        }
+      ]
+    },
+    "disconnect_before_acceptance": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scenario"
+        },
+        {
+          "properties": {
+            "scenario": {
+              "const": "disconnect_before_acceptance"
+            },
+            "scenario_text": {
+              "const": "Tests whether the client retries after the connection ends before request acceptance can be confirmed."
+            }
+          }
+        }
+      ]
+    },
+    "changed_body_retry": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scenario"
+        },
+        {
+          "properties": {
+            "scenario": {
+              "const": "changed_body_retry"
+            },
+            "scenario_text": {
+              "const": "Tests whether a retry changes the body after the origin accepts a request and disconnects."
+            }
+          }
+        }
+      ]
+    },
+    "cross_origin_redirect_credentials": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scenario"
+        },
+        {
+          "properties": {
+            "scenario": {
+              "const": "cross_origin_redirect_credentials"
+            },
+            "scenario_text": {
+              "const": "Tests redirect behavior and whether the synthetic credential reaches a different controlled origin."
+            }
+          }
+        }
+      ]
+    },
+    "retry_limit": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scenario"
+        },
+        {
+          "properties": {
+            "scenario": {
+              "const": "retry_limit"
+            },
+            "scenario_text": {
+              "const": "Tests how many attempts the client makes after a controlled service-unavailable response."
+            }
+          }
+        }
+      ]
+    },
+    "delayed_response": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/scenario"
+        },
+        {
+          "properties": {
+            "scenario": {
+              "const": "delayed_response"
+            },
+            "scenario_text": {
+              "const": "Tests whether the client retries while an accepted request is waiting for a delayed response."
+            }
+          }
+        }
+      ]
+    }
+  }
+}

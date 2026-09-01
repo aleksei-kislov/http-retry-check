@@ -1,0 +1,954 @@
+{
+  "schema_version": "http_retry_check.conformance_invalid.v1",
+  "category": "semantic",
+  "cases": [
+    {
+      "id": "semantic_scenario_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/scenario",
+      "operand": "\"\"",
+      "coverage": [
+        "enum.scenario.zero"
+      ]
+    },
+    {
+      "id": "semantic_scenario_unknown",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/scenario",
+      "operand": "\"marker_unknown\"",
+      "coverage": [
+        "enum.scenario.unknown"
+      ]
+    },
+    {
+      "id": "semantic_scenario_successor",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/scenario",
+      "operand": "\"accept_then_disconnect_v2\"",
+      "coverage": [
+        "enum.scenario.successor"
+      ]
+    },
+    {
+      "id": "semantic_assessment_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/assessment",
+      "operand": "\"\"",
+      "coverage": [
+        "enum.assessment.zero"
+      ]
+    },
+    {
+      "id": "semantic_assessment_unknown",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/assessment",
+      "operand": "\"marker_unknown\"",
+      "coverage": [
+        "enum.assessment.unknown"
+      ]
+    },
+    {
+      "id": "semantic_assessment_successor",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/assessment",
+      "operand": "\"pass_v2\"",
+      "coverage": [
+        "enum.assessment.successor"
+      ]
+    },
+    {
+      "id": "semantic_cleanup_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/cleanup",
+      "operand": "\"\"",
+      "coverage": [
+        "enum.cleanup.zero"
+      ]
+    },
+    {
+      "id": "semantic_cleanup_unknown",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/cleanup",
+      "operand": "\"marker_unknown\"",
+      "coverage": [
+        "enum.cleanup.unknown"
+      ]
+    },
+    {
+      "id": "semantic_cleanup_successor",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/cleanup",
+      "operand": "\"succeeded_v2\"",
+      "coverage": [
+        "enum.cleanup.successor"
+      ]
+    },
+    {
+      "id": "semantic_credential_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/credential",
+      "operand": "\"\"",
+      "coverage": [
+        "enum.credential.zero"
+      ]
+    },
+    {
+      "id": "semantic_credential_unknown",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/credential",
+      "operand": "\"marker_unknown\"",
+      "coverage": [
+        "enum.credential.unknown"
+      ]
+    },
+    {
+      "id": "semantic_credential_successor",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/credential",
+      "operand": "\"source_only_v2\"",
+      "coverage": [
+        "enum.credential.successor"
+      ]
+    },
+    {
+      "id": "semantic_finding_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/findings/0",
+      "operand": "\"\"",
+      "coverage": [
+        "enum.finding.zero"
+      ]
+    },
+    {
+      "id": "semantic_finding_unknown",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/findings/0",
+      "operand": "\"marker_unknown\"",
+      "coverage": [
+        "enum.finding.unknown"
+      ]
+    },
+    {
+      "id": "semantic_finding_successor",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/findings/0",
+      "operand": "\"capture_incomplete_v2\"",
+      "coverage": [
+        "enum.finding.successor"
+      ]
+    },
+    {
+      "id": "semantic_scenarios_null",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "null",
+      "target": "/scenarios",
+      "coverage": [
+        "collection.scenarios.null"
+      ]
+    },
+    {
+      "id": "semantic_findings_null",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "null",
+      "target": "/scenarios/0/findings",
+      "coverage": [
+        "collection.findings.null"
+      ]
+    },
+    {
+      "id": "semantic_row_missing",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "remove",
+      "target": "/scenarios/5",
+      "coverage": [
+        "rows.missing"
+      ]
+    },
+    {
+      "id": "semantic_row_duplicate",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "duplicate",
+      "target": "/scenarios/0",
+      "coverage": [
+        "rows.duplicate"
+      ]
+    },
+    {
+      "id": "semantic_row_additional",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "append_copy",
+      "target": "/scenarios",
+      "operand": "/scenarios/0",
+      "coverage": [
+        "rows.additional"
+      ]
+    },
+    {
+      "id": "semantic_rows_reordered",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "swap",
+      "target": "/scenarios/0",
+      "operand": "/scenarios/1",
+      "coverage": [
+        "rows.reordered"
+      ]
+    },
+    {
+      "id": "semantic_finding_missing",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "remove",
+      "target": "/scenarios/0/findings/0",
+      "coverage": [
+        "findings.missing"
+      ]
+    },
+    {
+      "id": "semantic_finding_duplicate",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "duplicate",
+      "target": "/scenarios/0/findings/0",
+      "coverage": [
+        "findings.duplicate"
+      ]
+    },
+    {
+      "id": "semantic_finding_additional",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "append",
+      "target": "/scenarios/0/findings",
+      "operand": "\"cleanup_unverified\"",
+      "coverage": [
+        "findings.additional"
+      ]
+    },
+    {
+      "id": "semantic_findings_reordered",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "swap",
+      "target": "/scenarios/0/findings/0",
+      "operand": "/scenarios/0/findings/1",
+      "coverage": [
+        "findings.reordered"
+      ]
+    },
+    {
+      "id": "semantic_aggregate_drift",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/assessment",
+      "operand": "\"inconclusive\"",
+      "coverage": [
+        "aggregate.drift"
+      ]
+    },
+    {
+      "id": "semantic_attempt_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/attempt_count",
+      "operand": "4",
+      "coverage": [
+        "field.attempt_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_effect_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/effect_count",
+      "operand": "4",
+      "coverage": [
+        "field.effect_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_overlap_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/overlap_count",
+      "operand": "3",
+      "coverage": [
+        "field.overlap_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_retry_after_effect_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/retry_after_effect_count",
+      "operand": "3",
+      "coverage": [
+        "field.retry_after_effect_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_retry_after_unconfirmed_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/1/observation/retry_after_unconfirmed_count",
+      "operand": "3",
+      "coverage": [
+        "field.retry_after_unconfirmed_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_retry_before_response_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/5/observation/retry_before_response_count",
+      "operand": "3",
+      "coverage": [
+        "field.retry_before_response_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_response_attempt_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/3/observation/response_attempt_count",
+      "operand": "4",
+      "coverage": [
+        "field.response_attempt_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_response_complete_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/3/observation/response_complete_count",
+      "operand": "4",
+      "coverage": [
+        "field.response_complete_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_delay_above_max",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/5/observation/delay_complete_count",
+      "operand": "4",
+      "coverage": [
+        "field.delay_complete_count.above_max"
+      ]
+    },
+    {
+      "id": "semantic_effect_exceeds_attempt",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/effect_count",
+      "operand": "2",
+      "coverage": [
+        "relationship.effect_attempt"
+      ]
+    },
+    {
+      "id": "semantic_overlap_contradicts_complete",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/overlap_count",
+      "operand": "1",
+      "coverage": [
+        "relationship.overlap_capture"
+      ]
+    },
+    {
+      "id": "semantic_retry_after_exceeds_later",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/retry_after_effect_count",
+      "operand": "1",
+      "coverage": [
+        "relationship.retry_later"
+      ]
+    },
+    {
+      "id": "semantic_retry_causal_sum_exceeds_later",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_unsafe_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/observation/retry_after_unconfirmed_count",
+      "operand": "1",
+      "coverage": [
+        "relationship.retry_sum"
+      ]
+    },
+    {
+      "id": "semantic_retry_before_exceeds_after_effect",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/5/observation/retry_before_response_count",
+      "operand": "1",
+      "coverage": [
+        "relationship.retry_before"
+      ]
+    },
+    {
+      "id": "semantic_response_attempt_exceeds_attempt",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/3/observation/response_attempt_count",
+      "operand": "3",
+      "coverage": [
+        "relationship.response_attempt"
+      ]
+    },
+    {
+      "id": "semantic_response_complete_exceeds_attempt",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/3/observation/response_complete_count",
+      "operand": "3",
+      "coverage": [
+        "relationship.response_complete"
+      ]
+    },
+    {
+      "id": "semantic_first_response_without_completion",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/5/observation/response_complete_count",
+      "operand": "0",
+      "coverage": [
+        "relationship.first_response_complete"
+      ]
+    },
+    {
+      "id": "semantic_single_later_response_role",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/3/observation/first_response_complete",
+      "operand": "false",
+      "coverage": [
+        "relationship.response_role"
+      ]
+    },
+    {
+      "id": "semantic_delay_exceeds_attempt",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/5/observation/delay_complete_count",
+      "operand": "2",
+      "coverage": [
+        "relationship.delay_attempt"
+      ]
+    },
+    {
+      "id": "semantic_delay_wrong_scenario",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/delay_complete_count",
+      "operand": "1",
+      "coverage": [
+        "scenario.delay_wrong_role"
+      ]
+    },
+    {
+      "id": "semantic_response_wrong_scenario",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/response_attempt_count",
+      "operand": "1",
+      "coverage": [
+        "scenario.response_wrong_role"
+      ]
+    },
+    {
+      "id": "semantic_retry_unconfirmed_wrong_scenario",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_unsafe_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/observation/retry_after_unconfirmed_count",
+      "operand": "1",
+      "coverage": [
+        "scenario.retry_causality_wrong_role"
+      ]
+    },
+    {
+      "id": "semantic_attempt_required_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/attempt_count",
+      "operand": "0",
+      "coverage": [
+        "field.attempt_count.required_zero"
+      ]
+    },
+    {
+      "id": "semantic_effect_required_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/effect_count",
+      "operand": "0",
+      "coverage": [
+        "field.effect_count.required_zero"
+      ]
+    },
+    {
+      "id": "semantic_retry_after_effect_required_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_unsafe_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/observation/retry_after_effect_count",
+      "operand": "0",
+      "coverage": [
+        "field.retry_after_effect_count.required_zero"
+      ]
+    },
+    {
+      "id": "semantic_retry_after_unconfirmed_required_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_unsafe_disconnect_before_acceptance",
+      "operation": "set",
+      "target": "/scenarios/1/observation/retry_after_unconfirmed_count",
+      "operand": "0",
+      "coverage": [
+        "field.retry_after_unconfirmed_count.required_zero"
+      ]
+    },
+    {
+      "id": "semantic_response_attempt_required_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/3/observation/response_attempt_count",
+      "operand": "0",
+      "coverage": [
+        "field.response_attempt_count.required_zero"
+      ]
+    },
+    {
+      "id": "semantic_delay_required_zero",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/5/observation/delay_complete_count",
+      "operand": "0",
+      "coverage": [
+        "field.delay_complete_count.required_zero"
+      ]
+    },
+    {
+      "id": "semantic_target_credential_wrong_scenario",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/credential",
+      "operand": "\"absent_at_target\"",
+      "coverage": [
+        "scenario.credential_wrong_role"
+      ]
+    },
+    {
+      "id": "semantic_method_fact_without_attempt",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/observation/method_consistent",
+      "operand": "false",
+      "coverage": [
+        "proxy.method_requires_attempt"
+      ]
+    },
+    {
+      "id": "semantic_destination_fact_without_attempt",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/observation/destination_consistent",
+      "operand": "false",
+      "coverage": [
+        "proxy.destination_requires_attempt"
+      ]
+    },
+    {
+      "id": "semantic_body_fact_without_attempt",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/observation/body_consistent",
+      "operand": "false",
+      "coverage": [
+        "proxy.body_requires_attempt"
+      ]
+    },
+    {
+      "id": "semantic_credential_fact_without_attempt",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "set",
+      "target": "/scenarios/0/observation/credential",
+      "operand": "\"source_only\"",
+      "coverage": [
+        "proxy.credential_requires_attempt"
+      ]
+    },
+    {
+      "id": "semantic_false_positive_empty_findings",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_inconclusive_accept_then_disconnect",
+      "operation": "set_positive",
+      "target": "/scenarios/0",
+      "coverage": [
+        "false_positive.empty_findings"
+      ]
+    },
+    {
+      "id": "semantic_unsafe_erased_by_incomplete_capture",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_unsafe_cross_origin_redirect_credentials",
+      "operation": "erase_unsafe",
+      "target": "/scenarios/3",
+      "coverage": [
+        "precedence.unsafe_survives_incomplete"
+      ]
+    },
+    {
+      "id": "semantic_scenario_incomplete_forged",
+      "expected": "invalid_result",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "append",
+      "target": "/scenarios/0/findings",
+      "operand": "\"scenario_incomplete\"",
+      "coverage": [
+        "finding.scenario_incomplete.forged"
+      ]
+    },
+    {
+      "id": "semantic_native_mutation_after_validation",
+      "expected": "invalid_result",
+      "representability": [
+        "go"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "native_mutate_after_validate",
+      "target": "/scenarios/0/findings",
+      "coverage": [
+        "native.go.mutation"
+      ]
+    },
+    {
+      "id": "semantic_caller_collection_detached",
+      "expected": "valid_after_caller_mutation",
+      "representability": [
+        "csharp"
+      ],
+      "base_case": "result_all_positive",
+      "operation": "native_mutate_original_collection",
+      "target": "/scenarios",
+      "coverage": [
+        "native.csharp.detachment"
+      ]
+    }
+  ]
+}
