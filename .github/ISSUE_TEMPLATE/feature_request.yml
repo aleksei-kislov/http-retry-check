@@ -1,0 +1,51 @@
+name: Feature proposal
+description: Propose a focused improvement to HTTP Retry Check.
+title: "proposal: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open a proposal before starting work on major behaviour, API, schema, dependency, or scope changes.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and pull requests for this proposal.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the problem a developer faces, not only the implementation you want.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Explain what would change for users and how they would use it.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Main area
+      options:
+        - Existing HTTP/1 scenario
+        - New scenario family
+        - Go API
+        - C# API
+        - CLI or developer experience
+        - Evidence or schema
+        - Documentation
+        - Other future direction
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Compatibility or security impact (optional)
+      description: Note any effects on Go/C# parity, schemas, shared test data, dependencies, network behaviour, or credentials.

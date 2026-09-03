@@ -1,0 +1,507 @@
+{
+  "schema_version": "http_retry_check.conformance_rows.v1",
+  "category": "unsafe",
+  "cases": [
+    {
+      "id": "unsafe_accept_retry_after_effect",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "accept_then_disconnect",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 2,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 2,
+        "overlap_count": 0,
+        "retry_after_effect_count": 1,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "retry_after_accepted_request",
+        "effect_limit_exceeded"
+      ],
+      "coverage": [
+        "scenario_unsafe.accept_then_disconnect",
+        "finding.retry_after_accepted_request",
+        "finding.effect_limit_exceeded"
+      ]
+    },
+    {
+      "id": "unsafe_disconnect_retry_after_unconfirmed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 2,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 1,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "retry_after_unconfirmed_acceptance"
+      ],
+      "coverage": [
+        "scenario_unsafe.disconnect_before_acceptance",
+        "finding.retry_after_unconfirmed_acceptance"
+      ]
+    },
+    {
+      "id": "unsafe_changed_body_retry",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "changed_body_retry",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 2,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 2,
+        "overlap_count": 0,
+        "retry_after_effect_count": 1,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": false,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "retry_after_accepted_request",
+        "body_changed",
+        "effect_limit_exceeded"
+      ],
+      "coverage": [
+        "scenario_unsafe.changed_body_retry",
+        "finding.retry_after_accepted_request",
+        "finding.body_changed",
+        "finding.effect_limit_exceeded",
+        "field.body_consistent.lower"
+      ]
+    },
+    {
+      "id": "unsafe_redirect_credential_exposed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "cross_origin_redirect_credentials",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 2,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 1,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 2,
+        "response_complete_count": 2,
+        "first_response_complete": true,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "exposed_at_target",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "credential_exposed_at_target"
+      ],
+      "coverage": [
+        "scenario_unsafe.cross_origin_redirect_credentials",
+        "finding.credential_exposed_at_target",
+        "credential.exposed_at_target"
+      ]
+    },
+    {
+      "id": "unsafe_retry_limit_exceeded",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "retry_limit",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 4,
+        "attempt_limit": 3,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 4,
+        "response_complete_count": 4,
+        "first_response_complete": true,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "attempt_limit_exceeded"
+      ],
+      "coverage": [
+        "scenario_unsafe.retry_limit",
+        "finding.attempt_limit_exceeded",
+        "field.attempt_count.max",
+        "field.response_attempt_count.max",
+        "field.response_complete_count.max"
+      ]
+    },
+    {
+      "id": "unsafe_delayed_retry_before_response",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "delayed_response",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 2,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 2,
+        "overlap_count": 0,
+        "retry_after_effect_count": 1,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 1,
+        "response_attempt_count": 2,
+        "response_complete_count": 1,
+        "first_response_complete": false,
+        "delay_complete_count": 2,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "capture_incomplete",
+        "retry_before_response",
+        "retry_after_accepted_request",
+        "effect_limit_exceeded"
+      ],
+      "coverage": [
+        "scenario_unsafe.delayed_response",
+        "finding.retry_before_response",
+        "finding.retry_after_accepted_request",
+        "finding.effect_limit_exceeded",
+        "field.response_later_complete_first_incomplete"
+      ]
+    },
+    {
+      "id": "unsafe_method_changed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": false,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "method_changed"
+      ],
+      "coverage": [
+        "finding.method_changed",
+        "field.method_consistent.lower"
+      ]
+    },
+    {
+      "id": "unsafe_destination_changed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": false,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "destination_changed"
+      ],
+      "coverage": [
+        "finding.destination_changed",
+        "field.destination_consistent.lower"
+      ]
+    },
+    {
+      "id": "unsafe_body_changed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": false,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "body_changed"
+      ],
+      "coverage": [
+        "finding.body_changed",
+        "field.body_consistent.lower"
+      ]
+    },
+    {
+      "id": "unsafe_effect_count_max",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "accept_then_disconnect",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 4,
+        "attempt_limit": 3,
+        "protocol": "HTTP/1.1",
+        "effect_count": 4,
+        "overlap_count": 0,
+        "retry_after_effect_count": 3,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "attempt_limit_exceeded",
+        "retry_after_accepted_request",
+        "effect_limit_exceeded"
+      ],
+      "coverage": [
+        "finding.attempt_limit_exceeded",
+        "finding.effect_limit_exceeded",
+        "field.effect_count.max",
+        "field.retry_after_effect_count.max"
+      ]
+    },
+    {
+      "id": "unsafe_unconfirmed_count_max",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 4,
+        "attempt_limit": 3,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 3,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "attempt_limit_exceeded",
+        "retry_after_unconfirmed_acceptance"
+      ],
+      "coverage": [
+        "finding.attempt_limit_exceeded",
+        "finding.retry_after_unconfirmed_acceptance",
+        "field.retry_after_unconfirmed_count.max"
+      ]
+    },
+    {
+      "id": "unsafe_retry_before_count_max",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "delayed_response",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 4,
+        "attempt_limit": 3,
+        "protocol": "HTTP/1.1",
+        "effect_count": 4,
+        "overlap_count": 0,
+        "retry_after_effect_count": 3,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 3,
+        "response_attempt_count": 4,
+        "response_complete_count": 4,
+        "first_response_complete": true,
+        "delay_complete_count": 4,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "capture_incomplete",
+        "attempt_limit_exceeded",
+        "retry_before_response",
+        "retry_after_accepted_request",
+        "effect_limit_exceeded"
+      ],
+      "coverage": [
+        "finding.attempt_limit_exceeded",
+        "finding.retry_before_response",
+        "finding.retry_after_accepted_request",
+        "finding.effect_limit_exceeded",
+        "field.retry_before_response_count.max",
+        "field.delay_complete_count.max"
+      ]
+    },
+    {
+      "id": "unsafe_overlap_count_max",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "retry_limit",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 4,
+        "attempt_limit": 3,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 3,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 4,
+        "response_complete_count": 4,
+        "first_response_complete": true,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "unsafe_behavior_observed",
+      "findings": [
+        "capture_incomplete",
+        "attempt_limit_exceeded"
+      ],
+      "coverage": [
+        "finding.capture_incomplete",
+        "finding.attempt_limit_exceeded",
+        "field.overlap_count.max"
+      ]
+    }
+  ]
+}

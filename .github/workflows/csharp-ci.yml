@@ -1,0 +1,480 @@
+name: C# CI
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .gitattributes
+      - .github/workflows/csharp-ci.yml
+      - global.json
+      - csharp/**
+      - conformance/http-retry-check/v1/**
+      - schemas/v1/**
+      - pkg/httpcheck/v1/**
+      - internal/scenariosuite/v1/**
+      - internal/httpcheck/v1/**
+      - third_party/licenses/microsoft-test-platform/**
+      - third_party/licenses/mstest/**
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+    paths:
+      - .gitattributes
+      - .github/workflows/csharp-ci.yml
+      - global.json
+      - csharp/**
+      - conformance/http-retry-check/v1/**
+      - schemas/v1/**
+      - pkg/httpcheck/v1/**
+      - internal/scenariosuite/v1/**
+      - internal/httpcheck/v1/**
+      - third_party/licenses/microsoft-test-platform/**
+      - third_party/licenses/mstest/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: csharp-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  DOTNET_MULTILEVEL_LOOKUP: "0"
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+  DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: "true"
+
+jobs:
+  test:
+    name: C# tests / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux
+            os: ubuntu-24.04
+          - label: Windows
+            os: windows-2025
+    steps:
+      - name: Configure LF checkout
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Failed to disable checkout line-ending conversion.'
+          }
+          & git config --global core.eol lf
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Failed to select LF checkout bytes.'
+          }
+          $autoCrlf = (& git config --global --get core.autocrlf | Out-String).Trim()
+          $eol = (& git config --global --get core.eol | Out-String).Trim()
+          if ($autoCrlf -cne 'false' -or $eol -cne 'lf') {
+            throw 'Git checkout line-ending policy was not fixed to repository bytes.'
+          }
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          clean: true
+          submodules: false
+          lfs: false
+
+      - name: Prepare temporary .NET state
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runnerRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP)
+          $stateRoot = Join-Path $runnerRoot 'http-retry-check-csharp'
+          $statePaths = [ordered]@{
+            DOTNET_CLI_HOME = Join-Path $stateRoot 'dotnet-cli-home'
+            NUGET_PACKAGES = Join-Path $stateRoot 'nuget-packages'
+            NUGET_HTTP_CACHE_PATH = Join-Path $stateRoot 'nuget-http-cache'
+            NUGET_PLUGINS_CACHE_PATH = Join-Path $stateRoot 'nuget-plugins-cache'
+          }
+
+          foreach ($entry in $statePaths.GetEnumerator()) {
+            $statePath = $entry.Value
+            if ([string]::IsNullOrWhiteSpace($statePath)) {
+              throw 'A required external .NET state path is empty.'
+            }
+
+            $fullPath = [IO.Path]::GetFullPath($statePath)
+            $relativePath = [IO.Path]::GetRelativePath($runnerRoot, $fullPath)
+            if (
+              [IO.Path]::IsPathRooted($relativePath) -or
+              $relativePath -eq '..' -or
+              $relativePath.StartsWith("..$([IO.Path]::DirectorySeparatorChar)")
+            ) {
+              throw "External .NET state escaped the runner temporary directory: $fullPath"
+            }
+            if (Test-Path -LiteralPath $fullPath) {
+              throw "External .NET state was not clean: $fullPath"
+            }
+
+            New-Item -ItemType Directory -Path $fullPath | Out-Null
+            "$($entry.Key)=$fullPath" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+
+      - name: Validate global.json
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $globalJson = Get-Content -LiteralPath global.json -Raw | ConvertFrom-Json
+          $rootKeys = @($globalJson.PSObject.Properties.Name)
+          $sdkKeys = @($globalJson.sdk.PSObject.Properties.Name)
+          if (($rootKeys -join ',') -cne 'sdk') {
+            throw 'global.json must contain only the sdk object.'
+          }
+          if (($sdkKeys -join ',') -cne 'version,rollForward,allowPrerelease') {
+            throw 'global.json contains an unexpected SDK selection member.'
+          }
+          if (
+            $globalJson.sdk.version -cne '10.0.303' -or
+            $globalJson.sdk.rollForward -cne 'disable' -or
+            $globalJson.sdk.allowPrerelease -isnot [bool] -or
+            $globalJson.sdk.allowPrerelease
+          ) {
+            throw 'global.json does not contain the expected SDK selection.'
+          }
+
+      - name: Set up .NET SDK from global.json
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: false
+
+      - name: Verify SDK and NuGet source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $selectedSdk = (& dotnet --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $selectedSdk -cne '10.0.303') {
+            throw "Expected .NET SDK 10.0.303, got '$selectedSdk'."
+          }
+
+          $configPath = [IO.Path]::GetFullPath('csharp/NuGet.Config')
+          $config = [Xml.Linq.XDocument]::Load($configPath)
+          $root = $config.Root
+          $sections = @($root.Elements())
+          if (
+            $root.Name.LocalName -cne 'configuration' -or
+            @($root.Attributes()).Count -ne 0 -or
+            (($sections | ForEach-Object { $_.Name.LocalName }) -join ',') -cne
+              'packageSources,auditSources,packageSourceMapping,disabledPackageSources'
+          ) {
+            throw 'NuGet configuration contains an unexpected section.'
+          }
+
+          foreach ($index in @(0, 1)) {
+            $children = @($sections[$index].Elements())
+            $attributes = @($children[1].Attributes())
+            if (
+              @($sections[$index].Attributes()).Count -ne 0 -or
+              $children.Count -ne 2 -or
+              $children[0].Name.LocalName -cne 'clear' -or
+              @($children[0].Attributes()).Count -ne 0 -or
+              $children[1].Name.LocalName -cne 'add' -or
+              (($attributes | ForEach-Object { $_.Name.LocalName }) -join ',') -cne
+                'key,value,protocolVersion' -or
+              (($attributes | ForEach-Object { $_.Value }) -join ',') -cne
+                'nuget.org,https://api.nuget.org/v3/index.json,3'
+            ) {
+              throw "Unexpected NuGet source configuration in $($sections[$index].Name.LocalName)."
+            }
+          }
+
+          $mapping = @($sections[2].Elements())
+          $patterns = @($mapping[0].Elements())
+          $disabled = @($sections[3].Elements())
+          if (
+            @($sections[2].Attributes()).Count -ne 0 -or
+            @($sections[3].Attributes()).Count -ne 0 -or
+            $mapping.Count -ne 1 -or
+            $mapping[0].Name.LocalName -cne 'packageSource' -or
+            @($mapping[0].Attributes()).Count -ne 1 -or
+            $mapping[0].Attribute('key').Value -cne 'nuget.org' -or
+            $patterns.Count -ne 1 -or
+            $patterns[0].Name.LocalName -cne 'package' -or
+            @($patterns[0].Attributes()).Count -ne 1 -or
+            $patterns[0].Attribute('pattern').Value -cne '*' -or
+            $disabled.Count -ne 1 -or
+            $disabled[0].Name.LocalName -cne 'clear' -or
+            @($disabled[0].Attributes()).Count -ne 0
+          ) {
+            throw 'NuGet source mapping or disabled-source configuration changed.'
+          }
+
+          $sources = @(& dotnet nuget list source --configfile csharp/NuGet.Config --format Short)
+          if ($LASTEXITCODE -ne 0) {
+            throw 'NuGet source enumeration failed.'
+          }
+          $sourceLines = @($sources | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+          if (
+            $sourceLines.Count -ne 1 -or
+            $sourceLines[0].Trim() -cne 'E https://api.nuget.org/v3/index.json'
+          ) {
+            throw "Unexpected enabled NuGet source: $($sourceLines -join '; ')"
+          }
+
+      - name: Restore locked dependencies
+        run: >-
+          dotnet restore csharp/HttpRetryCheck.slnx
+          -p:ContinuousIntegrationBuild=true
+          --locked-mode
+          --configfile csharp/NuGet.Config
+          --no-http-cache
+          --verbosity minimal
+
+      - name: Check NuGet checksum table
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          hrc_generated="$(mktemp)"
+          hrc_committed="$(mktemp)"
+          trap 'rm -f "$hrc_generated" "$hrc_committed"' EXIT
+          hrc_locks=(csharp/src/HttpRetryCheck/packages.lock.json
+            csharp/tests/HttpRetryCheck.Tests/packages.lock.json
+            csharp/examples/HttpResilienceRetry/packages.lock.json)
+          jq -r -s '[.[] | .dependencies[] | to_entries[]
+            | select(.value.type != "Project")
+            | [(.key | ascii_downcase), (.value.resolved | ascii_downcase)]]
+            | unique | sort | .[] | @tsv' "${hrc_locks[@]}" |
+          while IFS=$'\t' read -r hrc_id hrc_version; do
+            hrc_archive="$hrc_id/$hrc_version/$hrc_id.$hrc_version.nupkg"
+            hrc_sha256="$(curl -fsSL --retry 3 \
+              "https://api.nuget.org/v3-flatcontainer/$hrc_archive" |
+              shasum -a 256 | awk '{print $1}')"
+            printf "            '%s' = '%s'\n" "$hrc_archive" "$hrc_sha256"
+          done > "$hrc_generated"
+          awk '/^            # nuget-hashes:begin$/{emit=1;next}
+            /^            # nuget-hashes:end$/{emit=0}emit' \
+            .github/workflows/csharp-ci.yml > "$hrc_committed"
+          if ! diff -u "$hrc_committed" "$hrc_generated"; then
+            echo '::error title=NuGet checksum table drift::Run the command in docs/guides/source-development.md and replace the rows between the NuGet hash markers.'
+            exit 1
+          fi
+
+      - name: Verify package signatures and checksums
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $expected = [ordered]@{
+            # nuget-hashes:begin
+            'microsoft.applicationinsights/2.23.0/microsoft.applicationinsights.2.23.0.nupkg' = 'e6c7f76e0ec26598c7b1e2be1777e839c84486655e8a878fc4c655bd2e918dbd'
+            'microsoft.codecoverage/18.9.0/microsoft.codecoverage.18.9.0.nupkg' = '7ee6dac4627c176d819db2467f1f41ec355970a3ea1e8a6b8ba783ea072fc33d'
+            'microsoft.extensions.ambientmetadata.application/10.9.0/microsoft.extensions.ambientmetadata.application.10.9.0.nupkg' = '7337a311997263f1ea73c2bf682e64998281cc00f6130755cd2e0163b624526f'
+            'microsoft.extensions.compliance.abstractions/10.9.0/microsoft.extensions.compliance.abstractions.10.9.0.nupkg' = 'ff84e769b467688c2c03060f2532ee54af65da99737dfe6585edbe63e129b1cd'
+            'microsoft.extensions.configuration/10.0.11/microsoft.extensions.configuration.10.0.11.nupkg' = '8615ecbad578a7331dcbc0821b5d8faa1e2357f7a6890b2e5949755a90a564eb'
+            'microsoft.extensions.configuration.abstractions/10.0.11/microsoft.extensions.configuration.abstractions.10.0.11.nupkg' = '831fda7ec738bfdcd10143ec8b24ade8171955231cf50244e2fa89310a6238f9'
+            'microsoft.extensions.configuration.binder/10.0.11/microsoft.extensions.configuration.binder.10.0.11.nupkg' = 'a9c48a6beb8975a85a84cb9c6082143b5a60ff3ae5b0794ad6483f9561cffeaa'
+            'microsoft.extensions.dependencyinjection/10.0.11/microsoft.extensions.dependencyinjection.10.0.11.nupkg' = 'c6ec0681ef27ece8d2fae4bce50891d0b743391209d609bac3784c5edbee5a3f'
+            'microsoft.extensions.dependencyinjection.abstractions/10.0.11/microsoft.extensions.dependencyinjection.abstractions.10.0.11.nupkg' = 'e4f65e4205a6568f0afbb1a028454077ac5c9fedd754d5734f8720fc306d8ea6'
+            'microsoft.extensions.dependencyinjection.autoactivation/10.9.0/microsoft.extensions.dependencyinjection.autoactivation.10.9.0.nupkg' = '6373dd925a7369ab9b9e33e0abd8e6edb6437ff93be8c6c38a8601e2602252d5'
+            'microsoft.extensions.diagnostics/10.0.11/microsoft.extensions.diagnostics.10.0.11.nupkg' = '7168ad1c08d92c3cef4b3962fc2f7e05f0fb3c348be1cd87cf055dbe3fede8f5'
+            'microsoft.extensions.diagnostics.abstractions/10.0.11/microsoft.extensions.diagnostics.abstractions.10.0.11.nupkg' = '2528e711301d514ffcca67963f538aa17bb9b12e42384ab0411e0ea625276af2'
+            'microsoft.extensions.diagnostics.exceptionsummarization/10.9.0/microsoft.extensions.diagnostics.exceptionsummarization.10.9.0.nupkg' = '6acc6532efeb6f82451e28f928d626d62f317112d17b3a6ed627ef632191d32e'
+            'microsoft.extensions.fileproviders.abstractions/10.0.11/microsoft.extensions.fileproviders.abstractions.10.0.11.nupkg' = 'e0d989d7f1606e7e39c1c0fc8b2d30574694fff982b2b73098b9b31e9c091aa5'
+            'microsoft.extensions.hosting.abstractions/10.0.11/microsoft.extensions.hosting.abstractions.10.0.11.nupkg' = 'f2baf785f899eb8f46513074b78f91f188e8f87ddc879cb29790c808f3cdbfc2'
+            'microsoft.extensions.http/10.0.11/microsoft.extensions.http.10.0.11.nupkg' = '782d8720767525c9cee9c694a1510dc708c5e5e4dd9362e17600b2747490d07b'
+            'microsoft.extensions.http.diagnostics/10.9.0/microsoft.extensions.http.diagnostics.10.9.0.nupkg' = 'bd773a01d3d91992e0308bf4636220aaac2a2f2ecf5be4484eaa5b444484e4f2'
+            'microsoft.extensions.http.resilience/10.9.0/microsoft.extensions.http.resilience.10.9.0.nupkg' = '2419515bd3e38cfec43587150375b80a187ce16247508033b7792d71e1a51a41'
+            'microsoft.extensions.logging/10.0.11/microsoft.extensions.logging.10.0.11.nupkg' = '2bc32305e62cc5474ec98e7e42bc8ea2319f73802413f147aabc793314ae6615'
+            'microsoft.extensions.logging.abstractions/10.0.11/microsoft.extensions.logging.abstractions.10.0.11.nupkg' = '1dd507daae7995b03032cc0c7508d7d350eb81ac5e82d6f2328e1561ece1075a'
+            'microsoft.extensions.logging.configuration/10.0.11/microsoft.extensions.logging.configuration.10.0.11.nupkg' = '52d3268bd6654b88545d0babc5327730064b59ca79cf553233190ae1a6fc1d80'
+            'microsoft.extensions.objectpool/10.0.11/microsoft.extensions.objectpool.10.0.11.nupkg' = 'e940ba28af0131a251601b95dd9fbbe3e0c9838215a0fae085ab5f0b3ad8babf'
+            'microsoft.extensions.options/10.0.11/microsoft.extensions.options.10.0.11.nupkg' = '76306a1d836c602e36ed435b932068f71f6502d5f62ece3ad22c5d46b49d31af'
+            'microsoft.extensions.options.configurationextensions/10.0.11/microsoft.extensions.options.configurationextensions.10.0.11.nupkg' = 'b31e9a019de2ef2655233a9572cf96f334f557f9c4b9afd9c1f9c74495f6371a'
+            'microsoft.extensions.primitives/10.0.11/microsoft.extensions.primitives.10.0.11.nupkg' = 'e33f9b1dff2be1c1735f65705b71dd678e320636697e1633960ce47696d2ee8d'
+            'microsoft.extensions.resilience/10.9.0/microsoft.extensions.resilience.10.9.0.nupkg' = 'e34a0db5e467326b6b0d6fd2fc6ecf08a2e30a03e03719b84b300f3ae0ab4faa'
+            'microsoft.extensions.telemetry/10.9.0/microsoft.extensions.telemetry.10.9.0.nupkg' = '9e5b08cb25055721321662db749662a0e187f59ba62d95cb7af11aed072e553e'
+            'microsoft.extensions.telemetry.abstractions/10.9.0/microsoft.extensions.telemetry.abstractions.10.9.0.nupkg' = 'da8c7391f50ff72471288ba45b78ba3f33e7a4f38938672b7109e2cc842c6ed3'
+            'microsoft.net.illink.tasks/10.0.11/microsoft.net.illink.tasks.10.0.11.nupkg' = '28ee7ccf5c4bdfe67823c8e0ea62232174f61e224d77e7c6ef5caa1413ac0a76'
+            'microsoft.net.test.sdk/18.9.0/microsoft.net.test.sdk.18.9.0.nupkg' = '3c19312754a299160bafcb192104c57719849f05589b3ae5fed2e21dbcf4f5b0'
+            'microsoft.testing.extensions.telemetry/2.4.0/microsoft.testing.extensions.telemetry.2.4.0.nupkg' = '1829e24f526ceba89e19230759fab928490c97d02fb2df9370ef475ed3d5be9c'
+            'microsoft.testing.extensions.trxreport.abstractions/2.4.0/microsoft.testing.extensions.trxreport.abstractions.2.4.0.nupkg' = 'b9b754ee45f074ce37d1e35fc2995ac4d7e1214c702371ad3b85e01707ceeebf'
+            'microsoft.testing.platform/2.4.0/microsoft.testing.platform.2.4.0.nupkg' = '526f55747072e8fac86f3ee4e8c5ea9d08e07361755fd6773db3eeed52aa69b4'
+            'microsoft.testing.platform.msbuild/2.4.0/microsoft.testing.platform.msbuild.2.4.0.nupkg' = '29571503000fa1ee0deb2a62613d2c57bc23e5474286813b2f16ec7fe787dc09'
+            'microsoft.testplatform.objectmodel/18.9.0/microsoft.testplatform.objectmodel.18.9.0.nupkg' = 'fd124e525502283802d2a67d00b7379d39bb9c66ba84592dcf19b73900ec708a'
+            'microsoft.testplatform.testhost/18.9.0/microsoft.testplatform.testhost.18.9.0.nupkg' = '452242a8c198a1a4f45e54a28fa3c4ca3a80b9249bbcdf2c02fd9b818c02d1ee'
+            'mstest.analyzers/4.4.0/mstest.analyzers.4.4.0.nupkg' = '38e25303988932c66dc07b77f18308f7400562864e697ceaae3780a9d0305484'
+            'mstest.testadapter/4.4.0/mstest.testadapter.4.4.0.nupkg' = 'a11522c9a10bc1205a21ac55f49403194e8155918c6992213463b1b1d0119331'
+            'mstest.testframework/4.4.0/mstest.testframework.4.4.0.nupkg' = 'b5609afbf47b819467eaa16600a58cb7ec3177c9dc3edc6fcbb8ee1a40fd2a19'
+            'polly.core/8.4.2/polly.core.8.4.2.nupkg' = 'e1f9f99fa06edbdbaa5a0f1c8a28b7303b22f5b3b6fe6a0f6bd077709f4885ef'
+            'polly.extensions/8.4.2/polly.extensions.8.4.2.nupkg' = 'a327fd08d8bc3572f278c2f00410a27c5bd5e9eac811ababb3c8bd05976bd229'
+            'polly.ratelimiting/8.4.2/polly.ratelimiting.8.4.2.nupkg' = 'e37d937db709f145210d628b700164b0c8db714d0f94bacaf81aeb0f1170e3ff'
+            'system.threading.ratelimiting/8.0.0/system.threading.ratelimiting.8.0.0.nupkg' = '28e11612de99b61bd91c9d96a7bd1df6706106b3eaa1b1900e2dadc2529887fc'
+            # nuget-hashes:end
+          }
+          $locked = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+          foreach ($lockPath in @(
+            'csharp/src/HttpRetryCheck/packages.lock.json',
+            'csharp/tests/HttpRetryCheck.Tests/packages.lock.json'
+          )) {
+            $lock = Get-Content -LiteralPath $lockPath -Raw | ConvertFrom-Json
+            foreach ($framework in $lock.dependencies.PSObject.Properties) {
+              foreach ($package in $framework.Value.PSObject.Properties) {
+                $resolved = [string]$package.Value.resolved
+                if (-not [string]::IsNullOrWhiteSpace($resolved)) {
+                  $id = $package.Name.ToLowerInvariant()
+                  $version = $resolved.ToLowerInvariant()
+                  [void]$locked.Add("$id/$version/$id.$version.nupkg")
+                }
+              }
+            }
+          }
+
+          $actual = @(Get-ChildItem -LiteralPath $env:NUGET_PACKAGES -Recurse -File -Filter '*.nupkg')
+          if ($actual.Count -ne $locked.Count) {
+            throw "Expected exactly $($locked.Count) locked solution archives, found $($actual.Count)."
+          }
+
+          $author = '566A31882BE208BE4422F7CFD66ED09F5D4524A5994F50CCC8B05EC0528C1353'
+          $repository = '1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D'
+          $packagesRoot = [IO.Path]::GetFullPath($env:NUGET_PACKAGES)
+          foreach ($archive in $actual) {
+            $relative = [IO.Path]::GetRelativePath($packagesRoot, $archive.FullName).Replace(
+              [IO.Path]::DirectorySeparatorChar,
+              '/').ToLowerInvariant()
+            if (-not $locked.Contains($relative)) {
+              throw "Restored package is absent from the solution lock files: $relative"
+            }
+            if (-not $expected.Contains($relative)) {
+              throw "Restored package is absent from the checksum table: $relative"
+            }
+            $sha256 = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($sha256 -cne $expected[$relative]) {
+              throw "Package SHA-256 mismatch: $relative"
+            }
+
+            $verification = (& dotnet nuget verify --all --verbosity minimal $archive.FullName 2>&1 | Out-String)
+            if ($LASTEXITCODE -ne 0 -or
+                -not $verification.Contains($author, [StringComparison]::Ordinal) -or
+                -not $verification.Contains($repository, [StringComparison]::Ordinal)) {
+              throw "Package signature verification failed: $relative"
+            }
+          }
+
+      - name: Verify locked restore inputs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & git diff --exit-code -- `
+            csharp/src/HttpRetryCheck/packages.lock.json `
+            csharp/tests/HttpRetryCheck.Tests/packages.lock.json
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Locked restore metadata drifted.'
+          }
+
+          $expectedSource = 'https://api.nuget.org/v3/index.json'
+          $expectedConfig = [IO.Path]::GetFullPath('csharp/NuGet.Config')
+          $trimChars = [char[]]@(
+            [IO.Path]::DirectorySeparatorChar,
+            [IO.Path]::AltDirectorySeparatorChar
+          )
+          $expectedPackages = [IO.Path]::GetFullPath($env:NUGET_PACKAGES).TrimEnd($trimChars)
+          $assetPaths = @(
+            'csharp/src/HttpRetryCheck/obj/project.assets.json',
+            'csharp/tests/HttpRetryCheck.Tests/obj/project.assets.json'
+          )
+
+          foreach ($assetPath in $assetPaths) {
+            $assets = Get-Content -LiteralPath $assetPath -Raw | ConvertFrom-Json
+            $sources = @($assets.project.restore.sources.PSObject.Properties.Name)
+            $configs = @($assets.project.restore.configFilePaths)
+            $packageFolders = @($assets.packageFolders.PSObject.Properties.Name)
+            if ($sources.Count -ne 1 -or $sources[0] -cne $expectedSource) {
+              throw "Unexpected restore source in $assetPath."
+            }
+            if (
+              $configs.Count -ne 1 -or
+              [IO.Path]::GetFullPath($configs[0]) -ne $expectedConfig
+            ) {
+              throw "Unexpected restore configuration in $assetPath."
+            }
+            if (
+              $packageFolders.Count -ne 1 -or
+              [IO.Path]::GetFullPath($packageFolders[0]).TrimEnd($trimChars) -ne $expectedPackages
+            ) {
+              throw "Restore packages escaped the configured external cache in $assetPath."
+            }
+          }
+
+      - name: Build Release
+        run: >-
+          dotnet build csharp/HttpRetryCheck.slnx
+          -p:ContinuousIntegrationBuild=true
+          --configuration Release
+          --no-restore
+          --verbosity minimal
+
+      - name: Run tests
+        run: >-
+          dotnet test csharp/tests/HttpRetryCheck.Tests/HttpRetryCheck.Tests.csproj
+          -p:ContinuousIntegrationBuild=true
+          --configuration Release
+          --no-build
+          --no-restore
+          --settings csharp/HttpRetryCheck.runsettings
+          --verbosity normal
+
+  http-resilience-example:
+    name: HTTP resilience example / Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET SDK from global.json
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: false
+
+      - name: Verify SDK
+        shell: bash
+        run: test "$(dotnet --version)" = "10.0.303"
+
+      - name: Restore locked dependencies
+        run: >-
+          dotnet restore csharp/examples/HttpResilienceRetry/HttpResilienceRetry.csproj
+          -p:ContinuousIntegrationBuild=true
+          --locked-mode
+          --configfile csharp/NuGet.Config
+          --no-http-cache
+          --verbosity minimal
+
+      - name: Verify lock file
+        run: git diff --exit-code -- csharp/examples/HttpResilienceRetry/packages.lock.json
+
+      - name: Build Release
+        run: >-
+          dotnet build csharp/examples/HttpResilienceRetry/HttpResilienceRetry.csproj
+          -p:ContinuousIntegrationBuild=true
+          --configuration Release
+          --no-restore
+          --verbosity minimal
+
+      - name: Run HTTP resilience example
+        run: >-
+          dotnet run
+          --project csharp/examples/HttpResilienceRetry/HttpResilienceRetry.csproj
+          --configuration Release
+          --no-build
+          --no-restore

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:http-retry-check:schema:conformance-corpus-manifest:v1",
+  "title": "HTTP Retry Check Conformance Corpus Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "product_identity",
+    "suite_identity",
+    "report_identity",
+    "conformance_identity",
+    "files"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "http_retry_check.conformance_corpus_manifest.v1"
+    },
+    "product_identity": {
+      "const": "http_retry_check.v1"
+    },
+    "suite_identity": {
+      "const": "http_retry_check.scenario_suite.v1"
+    },
+    "report_identity": {
+      "const": "http_retry_check.report.v2"
+    },
+    "conformance_identity": {
+      "const": "http_retry_check.conformance.v1"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]*[A-Za-z0-9_-](?:/[A-Za-z0-9._-]*[A-Za-z0-9_-])*$",
+          "not": {
+            "pattern": "(^|/)([Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(\\.[A-Za-z0-9._-]*)?($|/)"
+          }
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

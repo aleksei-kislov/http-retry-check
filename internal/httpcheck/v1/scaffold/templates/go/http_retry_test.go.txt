@@ -1,0 +1,23 @@
+package httpcheck_test
+
+import (
+	"net/http"
+	"testing"
+
+	httpchecktest "github.com/aleksei-kislov/http-retry-check/pkg/httpcheck/v1/testing"
+)
+
+func TestHTTPRetryScenarios(t *testing.T) {
+	client := &http.Client{
+		// Replace this example with the client configuration used by your application.
+		CheckRedirect: func(request *http.Request, via []*http.Request) error {
+			if len(via) != 0 && request.URL.Host != via[0].URL.Host {
+				request.Header.Del("Authorization")
+			}
+			return nil
+		},
+	}
+	t.Cleanup(client.CloseIdleConnections)
+
+	httpchecktest.Check(t, client)
+}

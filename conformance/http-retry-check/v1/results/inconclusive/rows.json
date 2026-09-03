@@ -1,0 +1,785 @@
+{
+  "schema_version": "http_retry_check.conformance_rows.v1",
+  "category": "inconclusive",
+  "cases": [
+    {
+      "id": "unrun_accept_then_disconnect_cleanup_succeeded",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "accept_then_disconnect",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete"
+      ],
+      "coverage": [
+        "unrun.accept_then_disconnect",
+        "cleanup.succeeded",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "field.counts.lower"
+      ]
+    },
+    {
+      "id": "unrun_accept_then_disconnect_cleanup_failed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "accept_then_disconnect",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "failed"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete",
+        "cleanup_unverified"
+      ],
+      "coverage": [
+        "unrun.accept_then_disconnect",
+        "cleanup.failed",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "finding.cleanup_unverified"
+      ]
+    },
+    {
+      "id": "unrun_disconnect_before_acceptance_cleanup_succeeded",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete"
+      ],
+      "coverage": [
+        "unrun.disconnect_before_acceptance",
+        "cleanup.succeeded",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "field.counts.lower"
+      ]
+    },
+    {
+      "id": "unrun_disconnect_before_acceptance_cleanup_failed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "failed"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete",
+        "cleanup_unverified"
+      ],
+      "coverage": [
+        "unrun.disconnect_before_acceptance",
+        "cleanup.failed",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "finding.cleanup_unverified"
+      ]
+    },
+    {
+      "id": "unrun_changed_body_retry_cleanup_succeeded",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "changed_body_retry",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete"
+      ],
+      "coverage": [
+        "unrun.changed_body_retry",
+        "cleanup.succeeded",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "field.counts.lower"
+      ]
+    },
+    {
+      "id": "unrun_changed_body_retry_cleanup_failed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "changed_body_retry",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "failed"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete",
+        "cleanup_unverified"
+      ],
+      "coverage": [
+        "unrun.changed_body_retry",
+        "cleanup.failed",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "finding.cleanup_unverified"
+      ]
+    },
+    {
+      "id": "unrun_cross_origin_redirect_credentials_cleanup_succeeded",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "cross_origin_redirect_credentials",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete"
+      ],
+      "coverage": [
+        "unrun.cross_origin_redirect_credentials",
+        "cleanup.succeeded",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "field.counts.lower"
+      ]
+    },
+    {
+      "id": "unrun_cross_origin_redirect_credentials_cleanup_failed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "cross_origin_redirect_credentials",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "failed"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete",
+        "cleanup_unverified"
+      ],
+      "coverage": [
+        "unrun.cross_origin_redirect_credentials",
+        "cleanup.failed",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "finding.cleanup_unverified"
+      ]
+    },
+    {
+      "id": "unrun_retry_limit_cleanup_succeeded",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "retry_limit",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete"
+      ],
+      "coverage": [
+        "unrun.retry_limit",
+        "cleanup.succeeded",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "field.counts.lower"
+      ]
+    },
+    {
+      "id": "unrun_retry_limit_cleanup_failed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "retry_limit",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "failed"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete",
+        "cleanup_unverified"
+      ],
+      "coverage": [
+        "unrun.retry_limit",
+        "cleanup.failed",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "finding.cleanup_unverified"
+      ]
+    },
+    {
+      "id": "unrun_delayed_response_cleanup_succeeded",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "delayed_response",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete"
+      ],
+      "coverage": [
+        "unrun.delayed_response",
+        "cleanup.succeeded",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "field.counts.lower"
+      ]
+    },
+    {
+      "id": "unrun_delayed_response_cleanup_failed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "delayed_response",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 0,
+        "attempt_limit": 2,
+        "protocol": "",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "failed"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "attempt_not_observed",
+        "capture_incomplete",
+        "cleanup_unverified"
+      ],
+      "coverage": [
+        "unrun.delayed_response",
+        "cleanup.failed",
+        "finding.attempt_not_observed",
+        "finding.capture_incomplete",
+        "finding.cleanup_unverified"
+      ]
+    },
+    {
+      "id": "inconclusive_capture_only",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "accept_then_disconnect",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 1,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "capture_incomplete"
+      ],
+      "coverage": [
+        "finding.capture_incomplete",
+        "field.capture_complete.lower"
+      ]
+    },
+    {
+      "id": "inconclusive_response_incomplete",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "cross_origin_redirect_credentials",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 1,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "response_incomplete"
+      ],
+      "coverage": [
+        "finding.response_incomplete",
+        "field.response_complete_count.lower"
+      ]
+    },
+    {
+      "id": "inconclusive_delay_incomplete",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "delayed_response",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 1,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "capture_incomplete",
+        "response_incomplete",
+        "delay_incomplete"
+      ],
+      "coverage": [
+        "finding.capture_incomplete",
+        "finding.response_incomplete",
+        "finding.delay_incomplete",
+        "field.delay_complete_count.lower"
+      ]
+    },
+    {
+      "id": "inconclusive_credential_not_observed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": false,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "not_observed",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "capture_incomplete",
+        "credential_not_observed"
+      ],
+      "coverage": [
+        "finding.capture_incomplete",
+        "finding.credential_not_observed",
+        "credential.not_observed"
+      ]
+    },
+    {
+      "id": "inconclusive_credential_missing",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "disconnect_before_acceptance",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "missing",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "credential_missing"
+      ],
+      "coverage": [
+        "finding.credential_missing",
+        "credential.missing"
+      ]
+    },
+    {
+      "id": "inconclusive_effect_not_observed",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "cross_origin_redirect_credentials",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 2,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 2,
+        "response_complete_count": 2,
+        "first_response_complete": true,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "effect_not_observed"
+      ],
+      "coverage": [
+        "finding.effect_not_observed"
+      ]
+    },
+    {
+      "id": "inconclusive_cleanup_unverified",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "accept_then_disconnect",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 1,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 1,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 0,
+        "response_complete_count": 0,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "failed"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "cleanup_unverified"
+      ],
+      "coverage": [
+        "finding.cleanup_unverified",
+        "cleanup.failed"
+      ]
+    },
+    {
+      "id": "inconclusive_later_response_complete",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "scenario": "retry_limit",
+      "observation": {
+        "capture_complete": true,
+        "attempt_count": 2,
+        "attempt_limit": 2,
+        "protocol": "HTTP/1.1",
+        "effect_count": 0,
+        "overlap_count": 0,
+        "retry_after_effect_count": 0,
+        "retry_after_unconfirmed_count": 0,
+        "retry_before_response_count": 0,
+        "response_attempt_count": 2,
+        "response_complete_count": 1,
+        "first_response_complete": false,
+        "delay_complete_count": 0,
+        "method_consistent": true,
+        "destination_consistent": true,
+        "body_consistent": true,
+        "credential": "source_only",
+        "cleanup": "succeeded"
+      },
+      "assessment": "inconclusive",
+      "findings": [
+        "response_incomplete"
+      ],
+      "coverage": [
+        "finding.response_incomplete",
+        "field.response_later_complete_first_incomplete"
+      ]
+    }
+  ]
+}

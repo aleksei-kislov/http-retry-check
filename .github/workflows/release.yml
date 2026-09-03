@@ -1,0 +1,462 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+env:
+  GOTOOLCHAIN: local
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: "true"
+  DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+  DOTNET_NOLOGO: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Validate repository, tag, and package version
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$RELEASE_REPOSITORY" != "aleksei-kislov/http-retry-check" ]]; then
+            echo "::error title=Wrong release repository::Releases are allowed only from aleksei-kislov/http-retry-check."
+            exit 1
+          fi
+          if [[ "$RELEASE_REF_TYPE" != "tag" ]]; then
+            echo "::error title=Release requires a tag::This workflow accepts only tag pushes."
+            exit 1
+          fi
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo "::error title=Invalid release tag::Use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-prerelease."
+            exit 1
+          fi
+
+          package_version="${RELEASE_TAG#v}"
+          if [[ "$package_version" == *-* ]]; then
+            prerelease_version="${package_version#*-}"
+            IFS='.' read -r -a identifiers <<< "$prerelease_version"
+            for identifier in "${identifiers[@]}"; do
+              if [[ "$identifier" =~ ^[0-9]+$ && "$identifier" == 0[0-9]* ]]; then
+                echo "::error title=Invalid release tag::Numeric prerelease identifiers cannot have leading zeroes."
+                exit 1
+              fi
+            done
+          fi
+
+          checked_out_commit="$(git rev-parse HEAD)"
+          tagged_commit="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          event_commit="$(git rev-parse "${RELEASE_SHA}^{commit}")"
+          if [[ "$checked_out_commit" != "$tagged_commit" || "$checked_out_commit" != "$event_commit" ]]; then
+            echo "::error title=Tag checkout mismatch::The checked-out commit is not the exact pushed tag commit."
+            exit 1
+          fi
+
+          if ! main_commit="$(gh api "repos/$RELEASE_REPOSITORY/branches/main" --jq .commit.sha)"; then
+            echo "::error title=Main branch lookup failed::Could not read the current main commit through the GitHub API."
+            exit 1
+          fi
+          if [[ ! "$main_commit" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error title=Invalid main branch response::The GitHub API returned an invalid main commit."
+            exit 1
+          fi
+          if [[ "$tagged_commit" != "$main_commit" ]]; then
+            echo "::error title=Release tag is not current main::Tag $RELEASE_TAG points at $tagged_commit, while main points at $main_commit."
+            exit 1
+          fi
+
+          version_prefix="$(sed -n 's:.*<VersionPrefix>\([^<]*\)</VersionPrefix>.*:\1:p' csharp/src/HttpRetryCheck/HttpRetryCheck.csproj)"
+          if [[ -z "$version_prefix" || "$version_prefix" == *$'\n'* ]]; then
+            echo "::error title=Invalid project version::Expected exactly one VersionPrefix in the package project."
+            exit 1
+          fi
+          base_version="${package_version%%-*}"
+          if [[ "$version_prefix" != "$base_version" ]]; then
+            echo "::error title=Tag and project version differ::Tag $RELEASE_TAG requires VersionPrefix $base_version, found $version_prefix."
+            exit 1
+          fi
+
+          prerelease=false
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            prerelease=true
+          fi
+          {
+            echo "prerelease=$prerelease"
+            echo "tag=$RELEASE_TAG"
+            echo "version=$package_version"
+          } >> "$GITHUB_OUTPUT"
+
+  go-ci:
+    name: Complete Go CI
+    needs: validate
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  csharp-ci:
+    name: Complete C# CI
+    needs: validate
+    permissions:
+      contents: read
+    uses: ./.github/workflows/csharp-ci.yml
+
+  build-cli:
+    name: CLI / ${{ matrix.goos }} / ${{ matrix.goarch }}
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            asset: http-retry-check-linux-amd64
+          - goos: linux
+            goarch: arm64
+            asset: http-retry-check-linux-arm64
+          - goos: darwin
+            goarch: amd64
+            asset: http-retry-check-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            asset: http-retry-check-darwin-arm64
+          - goos: windows
+            goarch: amd64
+            asset: http-retry-check-windows-amd64.exe
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Go 1.26.6
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.6
+          check-latest: false
+          cache: false
+
+      - name: Build and inspect CLI
+        shell: bash
+        env:
+          ASSET_NAME: ${{ matrix.asset }}
+          CGO_ENABLED: "0"
+          GOARCH: ${{ matrix.goarch }}
+          GOOS: ${{ matrix.goos }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = "go1.26.6"
+          asset="$RUNNER_TEMP/$ASSET_NAME"
+          go build -buildvcs=true -mod=readonly -trimpath -o "$asset" ./cmd/http-retry-check
+
+          module_line="$(go version -m "$asset" | awk -F '\t' '$2 == "mod" { print $3 " " $4 }')"
+          if [[ "$module_line" != "github.com/aleksei-kislov/http-retry-check $RELEASE_TAG" ]]; then
+            echo "::error title=CLI version mismatch::Expected tagged module version $RELEASE_TAG, found '$module_line'."
+            exit 1
+          fi
+
+      - name: Upload CLI
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cli-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ runner.temp }}/${{ matrix.asset }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  checksums:
+    name: CLI checksums
+    needs: build-cli
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Download CLIs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: cli-*
+          path: ${{ runner.temp }}/release
+          merge-multiple: true
+
+      - name: Verify assets and write checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/release"
+          expected=(
+            http-retry-check-darwin-amd64
+            http-retry-check-darwin-arm64
+            http-retry-check-linux-amd64
+            http-retry-check-linux-arm64
+            http-retry-check-windows-amd64.exe
+          )
+          mapfile -t actual < <(find . -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)
+          if [[ "${actual[*]}" != "${expected[*]}" ]]; then
+            echo "::error title=Unexpected CLI assets::Expected '${expected[*]}', found '${actual[*]}'."
+            exit 1
+          fi
+          sha256sum "${expected[@]}" > SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-assets
+          path: |
+            ${{ runner.temp }}/release/http-retry-check-darwin-amd64
+            ${{ runner.temp }}/release/http-retry-check-darwin-arm64
+            ${{ runner.temp }}/release/http-retry-check-linux-amd64
+            ${{ runner.temp }}/release/http-retry-check-linux-arm64
+            ${{ runner.temp }}/release/http-retry-check-windows-amd64.exe
+            ${{ runner.temp }}/release/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  pack-nuget:
+    name: Pack NuGet package
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up .NET SDK from global.json
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: false
+
+      - name: Prepare temporary .NET state
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet_home="$RUNNER_TEMP/dotnet-cli-home"
+          package_cache="$RUNNER_TEMP/nuget-packages"
+          mkdir -p "$dotnet_home" "$package_cache"
+          {
+            echo "DOTNET_CLI_HOME=$dotnet_home"
+            echo "NUGET_PACKAGES=$package_cache"
+          } >> "$GITHUB_ENV"
+
+      - name: Restore locked dependencies
+        run: >-
+          dotnet restore csharp/src/HttpRetryCheck/HttpRetryCheck.csproj
+          -p:ContinuousIntegrationBuild=true
+          --locked-mode
+          --configfile csharp/NuGet.Config
+          --no-http-cache
+          --verbosity minimal
+
+      - name: Pack and inspect NuGet artifacts
+        shell: bash
+        env:
+          PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          test "$(dotnet --version)" = "10.0.303"
+          package_dir="$RUNNER_TEMP/nuget"
+          mkdir -p "$package_dir"
+          dotnet pack csharp/src/HttpRetryCheck/HttpRetryCheck.csproj \
+            -p:ContinuousIntegrationBuild=true \
+            -p:Version="$PACKAGE_VERSION" \
+            --configuration Release \
+            --no-restore \
+            --output "$package_dir" \
+            --verbosity minimal
+
+          expected_package="HttpRetryCheck.$PACKAGE_VERSION.nupkg"
+          expected_symbols="HttpRetryCheck.$PACKAGE_VERSION.snupkg"
+          mapfile -t actual < <(find "$package_dir" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)
+          expected=("$expected_package" "$expected_symbols")
+          if [[ "${actual[*]}" != "${expected[*]}" ]]; then
+            echo "::error title=Unexpected NuGet artifacts::Expected '${expected[*]}', found '${actual[*]}'."
+            exit 1
+          fi
+          unzip -t "$package_dir/$expected_package"
+          unzip -t "$package_dir/$expected_symbols"
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nuget-packages
+          path: |
+            ${{ runner.temp }}/nuget/*.nupkg
+            ${{ runner.temp }}/nuget/*.snupkg
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  publish-nuget:
+    name: Publish NuGet package
+    needs:
+      - validate
+      - pack-nuget
+      - go-ci
+      - csharp-ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+    steps:
+      - name: Download NuGet artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: nuget-packages
+          path: ${{ runner.temp }}/nuget
+
+      - name: Set up .NET SDK 10.0.303
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.303
+          cache: false
+
+      - name: Require trusted-publishing account
+        shell: bash
+        env:
+          NUGET_USER: ${{ vars.NUGET_USER }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$NUGET_USER" ]]; then
+            echo "::error title=NuGet trusted publishing is not configured::Set the NUGET_USER repository variable to the NuGet.org profile name bound to release.yml."
+            exit 1
+          fi
+
+      - name: Exchange GitHub OIDC token for a temporary NuGet API key
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Publish package and symbols
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          NUGET_SYMBOL_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$NUGET_API_KEY" || -z "$NUGET_SYMBOL_API_KEY" ]]; then
+            echo "::error title=NuGet login failed::The OIDC exchange returned no temporary API key."
+            exit 1
+          fi
+          cd "$RUNNER_TEMP/nuget"
+          package="HttpRetryCheck.$PACKAGE_VERSION.nupkg"
+          symbols="HttpRetryCheck.$PACKAGE_VERSION.snupkg"
+          if [[ ! -f "$package" || ! -f "$symbols" ]]; then
+            echo "::error title=NuGet artifacts are missing::Both the package and symbol package are required."
+            exit 1
+          fi
+          # NuGet in SDK 10.0.303 reads both temporary keys from the
+          # environment. Pushing the primary package through the V3 source also
+          # submits its adjacent, matching .snupkg.
+          dotnet nuget push "$package" \
+            --source https://api.nuget.org/v3/index.json
+
+  github-release:
+    name: Publish GitHub release
+    needs:
+      - validate
+      - checksums
+      - publish-nuget
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-assets
+          path: ${{ runner.temp }}/release
+
+      - name: Verify and publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.validate.outputs.prerelease }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/release"
+          assets=(
+            http-retry-check-darwin-amd64
+            http-retry-check-darwin-arm64
+            http-retry-check-linux-amd64
+            http-retry-check-linux-arm64
+            http-retry-check-windows-amd64.exe
+            SHA256SUMS
+          )
+          mapfile -t actual < <(find . -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)
+          mapfile -t expected < <(printf '%s\n' "${assets[@]}" | LC_ALL=C sort)
+          if [[ "${actual[*]}" != "${expected[*]}" ]]; then
+            echo "::error title=Unexpected release assets::Expected '${expected[*]}', found '${actual[*]}'."
+            exit 1
+          fi
+          sha256sum --check SHA256SUMS
+
+          previous_stable="$(gh release list \
+            --exclude-drafts \
+            --exclude-pre-releases \
+            --limit 1 \
+            --json tagName \
+            --jq '.[0].tagName // empty')"
+          release_flags=(--verify-tag --title "$RELEASE_TAG" --generate-notes)
+          if [[ -n "$previous_stable" ]]; then
+            release_flags+=(--notes-start-tag "$previous_stable")
+          fi
+          if [[ "$PRERELEASE" == "true" ]]; then
+            release_flags+=(--prerelease --latest=false)
+          fi
+          gh release create "$RELEASE_TAG" "${assets[@]}" "${release_flags[@]}"
+
+          actual_prerelease="$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)"
+          if [[ "$actual_prerelease" != "$PRERELEASE" ]]; then
+            echo "::error title=Release classification mismatch::Expected prerelease=$PRERELEASE, found $actual_prerelease."
+            exit 1
+          fi
+          mapfile -t published < <(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | LC_ALL=C sort)
+          if [[ "${published[*]}" != "${expected[*]}" ]]; then
+            echo "::error title=Published asset mismatch::Expected '${expected[*]}', found '${published[*]}'."
+            exit 1
+          fi

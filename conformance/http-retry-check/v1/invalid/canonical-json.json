@@ -1,0 +1,535 @@
+{
+  "schema_version": "http_retry_check.conformance_invalid.v1",
+  "category": "canonical_json",
+  "cases": [
+    {
+      "id": "json_empty",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "replace_base64",
+      "coverage": [
+        "json.empty"
+      ]
+    },
+    {
+      "id": "json_oversized",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "oversize_ascii",
+      "operand": " ",
+      "count": 262145,
+      "coverage": [
+        "json.oversized"
+      ]
+    },
+    {
+      "id": "json_invalid_utf8",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "replace_base64",
+      "operand": "/w==",
+      "coverage": [
+        "json.invalid_utf8"
+      ]
+    },
+    {
+      "id": "json_bom",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "prefix_base64",
+      "operand": "77u/",
+      "coverage": [
+        "json.bom"
+      ]
+    },
+    {
+      "id": "json_missing_terminal_lf",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "remove_terminal_lf",
+      "coverage": [
+        "json.terminal_lf"
+      ]
+    },
+    {
+      "id": "json_alternate_indentation",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "reindent",
+      "operand": "4",
+      "coverage": [
+        "json.indentation"
+      ]
+    },
+    {
+      "id": "json_alternate_whitespace",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "insert_whitespace",
+      "target": "/schema_version",
+      "operand": " ",
+      "coverage": [
+        "json.whitespace"
+      ]
+    },
+    {
+      "id": "json_member_order",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "swap_members",
+      "target": "/schema_version",
+      "operand": "/suite_identity",
+      "coverage": [
+        "json.member_order"
+      ]
+    },
+    {
+      "id": "json_alternate_escaping",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "replace_escape",
+      "target": "/claim_ceiling",
+      "operand": "\\u0054",
+      "coverage": [
+        "json.escaping"
+      ]
+    },
+    {
+      "id": "json_duplicate_member",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "duplicate_member",
+      "target": "/schema_version",
+      "coverage": [
+        "json.duplicate_member"
+      ]
+    },
+    {
+      "id": "json_unknown_member",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "add_member",
+      "target": "/marker_unknown",
+      "operand": "true",
+      "coverage": [
+        "json.unknown_member"
+      ]
+    },
+    {
+      "id": "json_null",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "replace_json",
+      "operand": "null",
+      "coverage": [
+        "json.null"
+      ]
+    },
+    {
+      "id": "json_wrong_type",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary",
+      "operand": "\"marker_wrong_type\"",
+      "coverage": [
+        "json.wrong_type"
+      ]
+    },
+    {
+      "id": "json_fractional_number",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary/passed",
+      "operand": "6.0",
+      "coverage": [
+        "json.number.fractional"
+      ]
+    },
+    {
+      "id": "json_exponent_number",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary/passed",
+      "operand": "6e0",
+      "coverage": [
+        "json.number.exponent"
+      ]
+    },
+    {
+      "id": "json_overflowing_number",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary/passed",
+      "operand": "18446744073709551616",
+      "coverage": [
+        "json.number.overflow"
+      ]
+    },
+    {
+      "id": "json_excessive_depth",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "replace_json",
+      "operand": "[[[[[[[[[0]]]]]]]]]",
+      "coverage": [
+        "json.depth"
+      ]
+    },
+    {
+      "id": "json_excessive_members",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "replace_object_members",
+      "operand": "marker",
+      "count": 33,
+      "coverage": [
+        "json.members"
+      ]
+    },
+    {
+      "id": "json_excessive_items",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "replace_array_items",
+      "operand": "0",
+      "count": 33,
+      "coverage": [
+        "json.items"
+      ]
+    },
+    {
+      "id": "json_wrong_identity",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/schema_version",
+      "operand": "\"http_retry_check.report.v1\"",
+      "coverage": [
+        "json.identity",
+        "report.identity.previous"
+      ]
+    },
+    {
+      "id": "json_trailing_data",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "suffix_base64",
+      "operand": "dHJhaWxpbmc=",
+      "coverage": [
+        "json.trailing"
+      ]
+    },
+    {
+      "id": "json_negative_summary_scenarios",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary/scenarios",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/summary/scenarios"
+      ]
+    },
+    {
+      "id": "json_negative_summary_passed",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary/passed",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/summary/passed"
+      ]
+    },
+    {
+      "id": "json_negative_summary_failed",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary/failed",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/summary/failed"
+      ]
+    },
+    {
+      "id": "json_negative_summary_inconclusive",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary/inconclusive",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/summary/inconclusive"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_attempt_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/attempt_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/attempt_count"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_attempt_limit",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/attempt_limit",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/attempt_limit"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_effect_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/effect_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/effect_count"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_overlap_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/overlap_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/overlap_count"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_retry_after_effect_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/retry_after_effect_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/retry_after_effect_count"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_retry_after_unconfirmed_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/retry_after_unconfirmed_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/retry_after_unconfirmed_count"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_retry_before_response_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/retry_before_response_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/retry_before_response_count"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_response_attempt_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/response_attempt_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/response_attempt_count"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_response_complete_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/response_complete_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/response_complete_count"
+      ]
+    },
+    {
+      "id": "json_negative_scenarios_0_observation_delay_complete_count",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/observation/delay_complete_count",
+      "operand": "-1",
+      "coverage": [
+        "json.number.negative",
+        "json.number.negative/scenarios/0/observation/delay_complete_count"
+      ]
+    }
+  ]
+}

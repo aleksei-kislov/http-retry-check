@@ -1,0 +1,126 @@
+{
+  "schema_version": "http_retry_check.conformance_results.v1",
+  "category": "unsafe",
+  "cases": [
+    {
+      "id": "result_unsafe_accept_then_disconnect",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "unsafe_behavior_observed",
+      "rows": [
+        "unsafe_accept_retry_after_effect",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "positive_redirect_followed",
+        "positive_retry_limit_two",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.unsafe.accept_then_disconnect",
+        "aggregate.unsafe"
+      ]
+    },
+    {
+      "id": "result_unsafe_disconnect_before_acceptance",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "unsafe_behavior_observed",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "unsafe_disconnect_retry_after_unconfirmed",
+        "positive_changed_body_retry",
+        "positive_redirect_followed",
+        "positive_retry_limit_two",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.unsafe.disconnect_before_acceptance",
+        "aggregate.unsafe"
+      ]
+    },
+    {
+      "id": "result_unsafe_changed_body_retry",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "unsafe_behavior_observed",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "unsafe_changed_body_retry",
+        "positive_redirect_followed",
+        "positive_retry_limit_two",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.unsafe.changed_body_retry",
+        "aggregate.unsafe"
+      ]
+    },
+    {
+      "id": "result_unsafe_cross_origin_redirect_credentials",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "unsafe_behavior_observed",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "unsafe_redirect_credential_exposed",
+        "positive_retry_limit_two",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.unsafe.cross_origin_redirect_credentials",
+        "aggregate.unsafe"
+      ]
+    },
+    {
+      "id": "result_unsafe_retry_limit",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "unsafe_behavior_observed",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "positive_redirect_followed",
+        "unsafe_retry_limit_exceeded",
+        "positive_delayed_response_complete"
+      ],
+      "coverage": [
+        "result.unsafe.retry_limit",
+        "aggregate.unsafe"
+      ]
+    },
+    {
+      "id": "result_unsafe_delayed_response",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "unsafe_behavior_observed",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "positive_redirect_followed",
+        "positive_retry_limit_two",
+        "unsafe_delayed_retry_before_response"
+      ],
+      "coverage": [
+        "result.unsafe.delayed_response",
+        "aggregate.unsafe"
+      ]
+    }
+  ]
+}

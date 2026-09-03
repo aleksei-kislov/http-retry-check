@@ -1,0 +1,323 @@
+{
+  "schema_version": "http_retry_check.conformance_invalid.v1",
+  "category": "artifact",
+  "cases": [
+    {
+      "id": "artifact_payload_detachment",
+      "expected": "detached",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "native_alias_probe",
+      "target": "payloads",
+      "coverage": [
+        "artifact.files.independent"
+      ]
+    },
+    {
+      "id": "artifact_missing_file",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "remove_file",
+      "target": "summary.md",
+      "coverage": [
+        "artifact.files.missing"
+      ]
+    },
+    {
+      "id": "artifact_extra_file",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "add_file",
+      "target": "marker.txt",
+      "coverage": [
+        "artifact.files.extra"
+      ]
+    },
+    {
+      "id": "artifact_reordered_files",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "swap_files",
+      "target": "report.json",
+      "operand": "junit.xml",
+      "coverage": [
+        "artifact.files.reordered"
+      ]
+    },
+    {
+      "id": "artifact_aliased_payload",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go"
+      ],
+      "base_case": "positive",
+      "operation": "alias_contents",
+      "target": "report.json",
+      "operand": "junit.xml",
+      "coverage": [
+        "artifact.files.aliased"
+      ]
+    },
+    {
+      "id": "artifact_duplicate_file",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "duplicate_file",
+      "target": "report.json",
+      "coverage": [
+        "artifact.files.duplicate"
+      ]
+    },
+    {
+      "id": "artifact_corrupt_file",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "flip_byte",
+      "target": "report.json",
+      "operand": "0",
+      "coverage": [
+        "artifact.files.corrupt"
+      ]
+    },
+    {
+      "id": "artifact_manifest_whitespace",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "insert_whitespace",
+      "target": "manifest.json",
+      "operand": " ",
+      "coverage": [
+        "artifact.manifest.whitespace"
+      ]
+    },
+    {
+      "id": "artifact_manifest_order",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "swap_members",
+      "target": "/schema_version",
+      "operand": "/report_schema_version",
+      "coverage": [
+        "artifact.manifest.order"
+      ]
+    },
+    {
+      "id": "artifact_manifest_unknown_member",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "add_member",
+      "target": "/marker_unknown",
+      "operand": "true",
+      "coverage": [
+        "artifact.manifest.unknown"
+      ]
+    },
+    {
+      "id": "artifact_manifest_identity_drift",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/schema_version",
+      "operand": "\"http_retry_check.artifact_manifest.v2\"",
+      "coverage": [
+        "artifact.manifest.identity"
+      ]
+    },
+    {
+      "id": "artifact_crossed_projection",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "replace_file_from_case",
+      "target": "summary.md",
+      "operand": "mixed",
+      "coverage": [
+        "artifact.projection.crossed"
+      ]
+    },
+    {
+      "id": "artifact_file_above_max",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "resize_file",
+      "target": "report.json",
+      "operand": "x",
+      "count": 262145,
+      "coverage": [
+        "artifact.bound.file"
+      ]
+    },
+    {
+      "id": "artifact_aggregate_above_max",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "resize_set",
+      "operand": "x",
+      "count": 1048577,
+      "coverage": [
+        "artifact.bound.aggregate"
+      ]
+    },
+    {
+      "id": "artifact_build_invalid_report",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "report_schema_drift",
+      "operation": "build_artifact",
+      "coverage": [
+        "artifact.build.invalid_report"
+      ]
+    },
+    {
+      "id": "artifact_build_null_report",
+      "expected": "invalid_artifact",
+      "representability": [
+        "csharp"
+      ],
+      "operation": "build_artifact_null",
+      "coverage": [
+        "artifact.build.null_report"
+      ]
+    },
+    {
+      "id": "artifact_file_null_constructor",
+      "expected": "invalid_artifact",
+      "representability": [
+        "csharp"
+      ],
+      "operation": "construct_file_null",
+      "coverage": [
+        "artifact.file.null_constructor"
+      ]
+    },
+    {
+      "id": "artifact_file_malformed_constructor",
+      "expected": "invalid_artifact",
+      "representability": [
+        "csharp"
+      ],
+      "operation": "construct_file_malformed",
+      "coverage": [
+        "artifact.file.malformed_constructor"
+      ]
+    },
+    {
+      "id": "artifact_constructible_malformed_value",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go"
+      ],
+      "base_case": "positive",
+      "operation": "mutate_file_name",
+      "target": "report.json",
+      "operand": "marker",
+      "coverage": [
+        "artifact.go.malformed"
+      ]
+    },
+    {
+      "id": "artifact_namespace_alias",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go"
+      ],
+      "base_case": "positive",
+      "operation": "mutate_file_name",
+      "target": "report.json",
+      "operand": "./report.json",
+      "coverage": [
+        "artifact.namespace.alias"
+      ]
+    },
+    {
+      "id": "artifact_validate_null",
+      "expected": "invalid_artifact",
+      "representability": [
+        "csharp"
+      ],
+      "operation": "validate_null",
+      "coverage": [
+        "artifact.validate.null"
+      ]
+    },
+    {
+      "id": "artifact_validate_nil",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go"
+      ],
+      "operation": "validate_nil",
+      "coverage": [
+        "artifact.validate.nil"
+      ]
+    },
+    {
+      "id": "artifact_mutation_after_validation",
+      "expected": "invalid_artifact",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "mutate_after_validate",
+      "target": "report.json",
+      "operand": "0",
+      "coverage": [
+        "artifact.validate.mutation"
+      ]
+    }
+  ]
+}

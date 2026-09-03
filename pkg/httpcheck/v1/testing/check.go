@@ -1,0 +1,100 @@
+package httpchecktest
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	httpcheck "github.com/aleksei-kislov/http-retry-check/pkg/httpcheck/v1"
+)
+
+const (
+	runFailureText     = "HTTP Retry Check scenario suite could not run."
+	invalidResultText  = "HTTP Retry Check scenario suite returned an invalid result."
+	positiveLinePrefix = "HTTP Retry Check PASS "
+	unsafeLinePrefix   = "HTTP Retry Check UNSAFE "
+	inconclusivePrefix = "HTTP Retry Check INCONCLUSIVE "
+)
+
+type testReporter interface {
+	Helper()
+	Fatal(...any)
+	Error(...any)
+	Log(...any)
+}
+
+// Check runs all six scenarios and fails the test for an unsafe or inconclusive result.
+func Check(t *testing.T, doer httpcheck.Doer, options ...httpcheck.Option) {
+	t.Helper()
+	check(t, t.Context(), doer, options...)
+}
+
+func check(t testReporter, parent context.Context, doer httpcheck.Doer, options ...httpcheck.Option) {
+	t.Helper()
+	result, err := httpcheck.Run(parent, doer, options...)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			t.Fatal(err)
+		} else {
+			t.Fatal(runFailureText)
+		}
+		return
+	}
+	if httpcheck.Validate(result) != nil {
+		t.Fatal(invalidResultText)
+		return
+	}
+	plan := reduceValidated(result)
+	if plan.fatal != "" {
+		t.Fatal(plan.fatal)
+		return
+	}
+	for _, line := range plan.lines {
+		if line.failure {
+			t.Error(line.text)
+		} else {
+			t.Log(line.text)
+		}
+	}
+}
+
+type checkLine struct {
+	failure bool
+	text    string
+}
+
+type checkPlan struct {
+	fatal string
+	lines []checkLine
+}
+
+func reduceValidated(result httpcheck.Result) checkPlan {
+	plan := checkPlan{lines: make([]checkLine, 0, len(result.Scenarios))}
+	positive := result.Assessment == httpcheck.AssessmentNoUnsafeBehaviorObserved
+	failureLine := false
+	for _, row := range result.Scenarios {
+		if row.Assessment == httpcheck.AssessmentNoUnsafeBehaviorObserved {
+			plan.lines = append(plan.lines, checkLine{
+				text: positiveLinePrefix + string(row.Scenario),
+			})
+			continue
+		}
+		positive = false
+		prefix := inconclusivePrefix
+		if row.Assessment == httpcheck.AssessmentUnsafeBehaviorObserved {
+			prefix = unsafeLinePrefix
+		}
+		for _, finding := range row.Findings {
+			failureLine = true
+			plan.lines = append(plan.lines, checkLine{
+				failure: true,
+				text: prefix + string(row.Scenario) + ": " + string(finding) + ": " +
+					httpcheck.FindingText(finding),
+			})
+		}
+	}
+	if !positive && !failureLine {
+		return checkPlan{fatal: invalidResultText}
+	}
+	return plan
+}

@@ -1,0 +1,35 @@
+# Go build and test outputs
+/bin/
+/build/
+/dist/
+/coverage/
+*.coverprofile
+*.test
+*.out
+
+# .NET build, test, and IDE outputs
+**/bin/
+**/obj/
+**/TestResults/
+.vs/
+*.user
+*.suo
+
+# Local tooling and temporary evidence
+.tools/
+.tmp/
+.http-retry-check-*/
+tmp/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~

@@ -1,0 +1,27 @@
+{
+  "schema_version": "http_retry_check.conformance_results.v1",
+  "category": "mixed",
+  "cases": [
+    {
+      "id": "result_mixed_unsafe_over_inconclusive",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "assessment": "unsafe_behavior_observed",
+      "rows": [
+        "positive_accept_then_disconnect",
+        "positive_disconnect_before_acceptance",
+        "positive_changed_body_retry",
+        "unsafe_redirect_credential_exposed",
+        "positive_retry_limit_two",
+        "unrun_delayed_response_cleanup_failed"
+      ],
+      "coverage": [
+        "result.mixed",
+        "precedence.unsafe_over_inconclusive",
+        "aggregate.unsafe"
+      ]
+    }
+  ]
+}

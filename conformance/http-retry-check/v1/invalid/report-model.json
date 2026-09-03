@@ -1,0 +1,301 @@
+{
+  "schema_version": "http_retry_check.conformance_invalid.v1",
+  "category": "report_model",
+  "cases": [
+    {
+      "id": "report_outcome_zero",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/outcome",
+      "operand": "\"\"",
+      "coverage": [
+        "report.outcome.zero"
+      ]
+    },
+    {
+      "id": "report_outcome_unknown",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/outcome",
+      "operand": "\"marker_unknown\"",
+      "coverage": [
+        "report.outcome.unknown"
+      ]
+    },
+    {
+      "id": "report_outcome_successor",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/outcome",
+      "operand": "\"pass_v2\"",
+      "coverage": [
+        "report.outcome.successor"
+      ]
+    },
+    {
+      "id": "report_schema_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/schema_version",
+      "operand": "\"http_retry_check.report.v1\"",
+      "coverage": [
+        "report.identity.schema",
+        "report.identity.previous"
+      ]
+    },
+    {
+      "id": "report_suite_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/suite_identity",
+      "operand": "\"http_retry_check.scenario_suite.v2\"",
+      "coverage": [
+        "report.identity.suite"
+      ]
+    },
+    {
+      "id": "report_explanation_identity_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/explanation_identity",
+      "operand": "\"http_retry_check.scenario_explanations.v2\"",
+      "coverage": [
+        "report.identity.explanation"
+      ]
+    },
+    {
+      "id": "report_claim_ceiling_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/claim_ceiling",
+      "operand": "\"marker_claim\"",
+      "coverage": [
+        "report.identity.claim"
+      ]
+    },
+    {
+      "id": "report_scenario_text_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/scenario_text",
+      "operand": "\"marker_text\"",
+      "coverage": [
+        "report.text.scenario"
+      ]
+    },
+    {
+      "id": "report_assessment_text_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/assessment_text",
+      "operand": "\"marker_text\"",
+      "coverage": [
+        "report.text.assessment"
+      ]
+    },
+    {
+      "id": "report_row_assessment_text_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/scenarios/0/assessment_text",
+      "operand": "\"marker_text\"",
+      "coverage": [
+        "report.text.row_assessment"
+      ]
+    },
+    {
+      "id": "report_finding_text_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "inconclusive",
+      "operation": "set",
+      "target": "/scenarios/5/findings/0/text",
+      "operand": "\"marker_text\"",
+      "coverage": [
+        "report.text.finding"
+      ]
+    },
+    {
+      "id": "report_aggregate_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/assessment",
+      "operand": "\"inconclusive\"",
+      "coverage": [
+        "report.aggregate.drift"
+      ]
+    },
+    {
+      "id": "report_summary_drift",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "set",
+      "target": "/summary/passed",
+      "operand": "5",
+      "coverage": [
+        "report.summary.drift"
+      ]
+    },
+    {
+      "id": "report_scenarios_null",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "null",
+      "target": "/scenarios",
+      "coverage": [
+        "report.collection.null"
+      ]
+    },
+    {
+      "id": "report_findings_null",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "null",
+      "target": "/scenarios/0/findings",
+      "coverage": [
+        "report.findings.null"
+      ]
+    },
+    {
+      "id": "report_nested_missing",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "remove",
+      "target": "/scenarios/0/observation",
+      "coverage": [
+        "report.nested.missing"
+      ]
+    },
+    {
+      "id": "report_nested_duplicate",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "duplicate_member",
+      "target": "/scenarios/0/assessment",
+      "coverage": [
+        "report.nested.duplicate"
+      ]
+    },
+    {
+      "id": "report_rows_reordered",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "positive",
+      "operation": "swap",
+      "target": "/scenarios/0",
+      "operand": "/scenarios/1",
+      "coverage": [
+        "report.rows.reordered"
+      ]
+    },
+    {
+      "id": "report_findings_reordered",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "mixed",
+      "operation": "swap",
+      "target": "/scenarios/5/findings/0",
+      "operand": "/scenarios/5/findings/1",
+      "coverage": [
+        "report.findings.reordered"
+      ]
+    },
+    {
+      "id": "report_constructor_invalid_result",
+      "expected": "invalid_report",
+      "representability": [
+        "go",
+        "csharp"
+      ],
+      "base_case": "semantic_scenario_incomplete_forged",
+      "operation": "construct_report",
+      "coverage": [
+        "report.constructor.contradiction"
+      ]
+    }
+  ]
+}

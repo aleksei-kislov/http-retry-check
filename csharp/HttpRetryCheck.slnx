@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/HttpRetryCheck/HttpRetryCheck.csproj" />
+  <Project Path="tests/HttpRetryCheck.Tests/HttpRetryCheck.Tests.csproj" />
+</Solution>

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>HttpRetryCheck</AssemblyName>
+    <RootNamespace>HttpRetryCheck</RootNamespace>
+    <DebugType>portable</DebugType>
+    <PackageId>HttpRetryCheck</PackageId>
+    <VersionPrefix>0.2.0</VersionPrefix>
+    <IsPackable>true</IsPackable>
+    <Authors>Aleksei Kislov</Authors>
+    <Description>Tests .NET HTTP clients against six controlled HTTP/1 retry scenarios and produces deterministic evidence.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/aleksei-kislov/http-retry-check</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/aleksei-kislov/http-retry-check</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Update="PACKAGE.md" Pack="true" PackagePath="" />
+    <None Include="../../../LICENSE" Pack="true" PackagePath="" />
+    <None Include="../../../NOTICE" Pack="true" PackagePath="" />
+  </ItemGroup>
+</Project>

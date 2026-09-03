@@ -1,0 +1,42 @@
+name: Usage question
+description: Ask a focused question about the current v0.1 release.
+title: "question: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Support is community best effort. Do not include secrets or suspected vulnerabilities; follow SECURITY.md for private reporting.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I read the quick start and searched existing issues.
+          required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: What are you using?
+      options:
+        - Go API
+        - C# API
+        - CLI
+        - Evidence or schemas
+        - Contributing or source development
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Question or goal
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Include commands, client settings, output, source revision, OS, and toolchain version. Remove private data first.
+    validations:
+      required: true
