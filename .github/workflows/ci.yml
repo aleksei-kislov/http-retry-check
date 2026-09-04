@@ -21,11 +21,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  public_tree:
+    name: Public tree guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Reject private development files
+        shell: bash
+        run: |
+          if [[ -d findings || -e README.dev.md ]]; then
+            printf '%s\n' 'private development files must not reach this repository'
+            exit 1
+          fi
+
   quality:
     name: Quality / Linux
+    needs: public_tree
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - name: Require public tree guard
+        if: ${{ needs.public_tree.result != 'success' }}
+        shell: bash
+        run: |
+          printf '%s\n' 'private development files must not reach this repository'
+          exit 1
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
