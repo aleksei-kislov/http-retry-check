@@ -1,0 +1,67 @@
+#!/bin/sh
+set -eu
+
+remote_url=${2-}
+remote_url=$(printf '%s' "$remote_url" | tr '[:upper:]' '[:lower:]')
+remote_url=${remote_url%/}
+case "$remote_url" in
+	http://* | https://* | git://* | ssh://*)
+		authority_and_path=${remote_url#*://}
+		authority_and_path=${authority_and_path#*@}
+		host_port=${authority_and_path%%/*}
+		case "$host_port" in
+			github.com | github.com:* | ssh.github.com | ssh.github.com:*) ;;
+			*) exit 0 ;;
+		esac
+		repository_path=${authority_and_path#*/}
+		;;
+	*@github.com:*)
+		repository_path=${remote_url#*:}
+		;;
+	*) exit 0 ;;
+esac
+repository_path=${repository_path%/}
+repository_path=${repository_path%.git}
+case "$repository_path" in
+	aleksei-kislov/http-retry-check)
+		remote_kind=public
+		;;
+	aleksei-kislov/http-retry-check-experiments)
+		remote_kind=private
+		;;
+	*) exit 0 ;;
+esac
+
+zero=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref remote_sha; do
+	if [ "$remote_kind" = public ] &&
+		{ [ "$local_ref" = refs/heads/findings ] || [ "$remote_ref" = refs/heads/findings ]; }; then
+		printf '%s\n' 'private development files must not reach this repository' >&2
+		exit 1
+	fi
+	if [ "$local_sha" = "$zero" ]; then
+		continue
+	fi
+	local_commit=$(git rev-parse --verify "$local_sha^{commit}" 2>/dev/null) || continue
+	if [ "$remote_sha" != "$zero" ] &&
+		remote_commit=$(git rev-parse --verify "$remote_sha^{commit}" 2>/dev/null); then
+		commits=$(git rev-list "$remote_commit..$local_commit")
+	else
+		commits=$(git rev-list "$local_commit")
+	fi
+	for commit in $commits; do
+		if [ -n "$(git ls-tree --name-only "$commit" -- findings README.dev.md)" ] &&
+			{ [ "$remote_kind" = public ] || [ "$remote_ref" != refs/heads/findings ]; }; then
+			printf '%s\n' 'private development files must not reach this repository' >&2
+			exit 1
+		fi
+	done
+	if [ "$remote_kind" = private ] && [ "$remote_ref" = refs/heads/main ]; then
+		git fetch --quiet --no-tags public \
+			+refs/heads/main:refs/remotes/public/main
+		if ! git merge-base --is-ancestor "$local_commit" refs/remotes/public/main; then
+			printf '%s\n' 'development main must come from public main' >&2
+			exit 1
+		fi
+	fi
+done
