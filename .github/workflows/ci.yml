@@ -30,14 +30,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Reject private development files
         shell: bash
         run: |
-          if [[ -d findings || -e README.dev.md ]]; then
-            printf '%s\n' 'private development files must not reach this repository'
-            exit 1
-          fi
+          set -euo pipefail
+          while IFS= read -r commit_sha; do
+            if [[ -n "$(git ls-tree --name-only "$commit_sha" -- findings README.dev.md)" ]]; then
+              printf '%s\n' 'private development files must not reach this repository'
+              exit 1
+            fi
+          done < <(git rev-list HEAD)
 
   quality:
     name: Quality / Linux
