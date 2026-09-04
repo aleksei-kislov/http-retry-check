@@ -5,16 +5,28 @@ remote_url=${2-}
 remote_url=$(printf '%s' "$remote_url" | tr '[:upper:]' '[:lower:]')
 remote_url=${remote_url%/}
 case "$remote_url" in
-	https://github.com/aleksei-kislov/http-retry-check | \
-		https://github.com/aleksei-kislov/http-retry-check.git | \
-		git@github.com:aleksei-kislov/http-retry-check.git | \
-		ssh://git@github.com/aleksei-kislov/http-retry-check.git)
+	http://* | https://* | git://* | ssh://*)
+		authority_and_path=${remote_url#*://}
+		authority_and_path=${authority_and_path#*@}
+		host_port=${authority_and_path%%/*}
+		case "$host_port" in
+			github.com | github.com:* | ssh.github.com | ssh.github.com:*) ;;
+			*) exit 0 ;;
+		esac
+		repository_path=${authority_and_path#*/}
+		;;
+	*@github.com:*)
+		repository_path=${remote_url#*:}
+		;;
+	*) exit 0 ;;
+esac
+repository_path=${repository_path%/}
+repository_path=${repository_path%.git}
+case "$repository_path" in
+	aleksei-kislov/http-retry-check)
 		remote_kind=public
 		;;
-	https://github.com/aleksei-kislov/http-retry-check-experiments | \
-		https://github.com/aleksei-kislov/http-retry-check-experiments.git | \
-		git@github.com:aleksei-kislov/http-retry-check-experiments.git | \
-		ssh://git@github.com/aleksei-kislov/http-retry-check-experiments.git)
+	aleksei-kislov/http-retry-check-experiments)
 		remote_kind=private
 		;;
 	*) exit 0 ;;
