@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+[ "${1-}" = public ] || exit 0
+
+zero=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref _remote_sha; do
+	if [ "$local_ref" = refs/heads/findings ] || [ "$remote_ref" = refs/heads/findings ]; then
+		printf '%s\n' 'private development files must not reach this repository' >&2
+		exit 1
+	fi
+	if [ "$local_sha" != "$zero" ] &&
+		git ls-tree -d --name-only "$local_sha" -- findings | grep -Fxq findings; then
+		printf '%s\n' 'private development files must not reach this repository' >&2
+		exit 1
+	fi
+done
