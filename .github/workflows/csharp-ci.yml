@@ -4,18 +4,6 @@ on:
   workflow_call:
   workflow_dispatch:
   pull_request:
-    paths:
-      - .gitattributes
-      - .github/workflows/csharp-ci.yml
-      - global.json
-      - csharp/**
-      - conformance/http-retry-check/v1/**
-      - schemas/v1/**
-      - pkg/httpcheck/v1/**
-      - internal/scenariosuite/v1/**
-      - internal/httpcheck/v1/**
-      - third_party/licenses/microsoft-test-platform/**
-      - third_party/licenses/mstest/**
   push:
     branches:
       - main

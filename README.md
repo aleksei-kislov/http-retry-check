@@ -5,9 +5,11 @@ failure scenarios. It shows whether the client replays accepted requests,
 changes a replayed body, forwards credentials to another origin, exceeds its
 retry limit, or retries before the first request's outcome is known.
 
-> **Release status:** `v0.2.0` is the next release. It will be available as a
-> Go module, a NuGet package, and prebuilt CLI binaries. APIs may change before
-> `v1.0.0`.
+> **Release status:** `v0.2.0` is the current release. It is available as a
+> Go module (`go get github.com/aleksei-kislov/http-retry-check@v0.2.0`), a
+> NuGet package (`HttpRetryCheck 0.2.0`), and prebuilt CLI binaries on the
+> [releases page](https://github.com/aleksei-kislov/http-retry-check/releases).
+> APIs may change before `v1.0.0`.
 
 ## See it fail
 
