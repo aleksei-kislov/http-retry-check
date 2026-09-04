@@ -1,17 +1,33 @@
 #!/bin/sh
 set -eu
 
-[ "${1-}" = public ] || exit 0
+remote_name=${1-}
+case "$remote_name" in
+	public | origin) ;;
+	*) exit 0 ;;
+esac
 
 zero=0000000000000000000000000000000000000000
 while read -r local_ref local_sha remote_ref _remote_sha; do
-	if [ "$local_ref" = refs/heads/findings ] || [ "$remote_ref" = refs/heads/findings ]; then
+	if [ "$remote_name" = public ] &&
+		{ [ "$local_ref" = refs/heads/findings ] || [ "$remote_ref" = refs/heads/findings ]; }; then
 		printf '%s\n' 'private development files must not reach this repository' >&2
 		exit 1
 	fi
-	if [ "$local_sha" != "$zero" ] &&
-		git ls-tree -d --name-only "$local_sha" -- findings | grep -Fxq findings; then
+	if [ "$local_sha" = "$zero" ]; then
+		continue
+	fi
+	if git ls-tree -d --name-only "$local_sha" -- findings | grep -Fxq findings &&
+		{ [ "$remote_name" = public ] || [ "$remote_ref" != refs/heads/findings ]; }; then
 		printf '%s\n' 'private development files must not reach this repository' >&2
 		exit 1
+	fi
+	if [ "$remote_name" = origin ] && [ "$remote_ref" = refs/heads/main ]; then
+		git fetch --quiet --no-tags public \
+			+refs/heads/main:refs/remotes/public/main
+		if ! git merge-base --is-ancestor "$local_sha" refs/remotes/public/main; then
+			printf '%s\n' 'development main must come from public main' >&2
+			exit 1
+		fi
 	fi
 done
