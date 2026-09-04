@@ -1,15 +1,28 @@
 #!/bin/sh
 set -eu
 
-remote_name=${1-}
-case "$remote_name" in
-	public | origin) ;;
+remote_url=${2-}
+remote_url=$(printf '%s' "$remote_url" | tr '[:upper:]' '[:lower:]')
+remote_url=${remote_url%/}
+case "$remote_url" in
+	https://github.com/aleksei-kislov/http-retry-check | \
+		https://github.com/aleksei-kislov/http-retry-check.git | \
+		git@github.com:aleksei-kislov/http-retry-check.git | \
+		ssh://git@github.com/aleksei-kislov/http-retry-check.git)
+		remote_kind=public
+		;;
+	https://github.com/aleksei-kislov/http-retry-check-experiments | \
+		https://github.com/aleksei-kislov/http-retry-check-experiments.git | \
+		git@github.com:aleksei-kislov/http-retry-check-experiments.git | \
+		ssh://git@github.com/aleksei-kislov/http-retry-check-experiments.git)
+		remote_kind=private
+		;;
 	*) exit 0 ;;
 esac
 
 zero=0000000000000000000000000000000000000000
 while read -r local_ref local_sha remote_ref _remote_sha; do
-	if [ "$remote_name" = public ] &&
+	if [ "$remote_kind" = public ] &&
 		{ [ "$local_ref" = refs/heads/findings ] || [ "$remote_ref" = refs/heads/findings ]; }; then
 		printf '%s\n' 'private development files must not reach this repository' >&2
 		exit 1
@@ -18,11 +31,11 @@ while read -r local_ref local_sha remote_ref _remote_sha; do
 		continue
 	fi
 	if git ls-tree -d --name-only "$local_sha" -- findings | grep -Fxq findings &&
-		{ [ "$remote_name" = public ] || [ "$remote_ref" != refs/heads/findings ]; }; then
+		{ [ "$remote_kind" = public ] || [ "$remote_ref" != refs/heads/findings ]; }; then
 		printf '%s\n' 'private development files must not reach this repository' >&2
 		exit 1
 	fi
-	if [ "$remote_name" = origin ] && [ "$remote_ref" = refs/heads/main ]; then
+	if [ "$remote_kind" = private ] && [ "$remote_ref" = refs/heads/main ]; then
 		git fetch --quiet --no-tags public \
 			+refs/heads/main:refs/remotes/public/main
 		if ! git merge-base --is-ancestor "$local_sha" refs/remotes/public/main; then
